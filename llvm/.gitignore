@@ -69,6 +69,8 @@ tools/llgo
 tools/polly
 # avrlit, which is tracked independently.
 tools/avrlit
+# BinUtils, which is tracked independently.
+tools/binutils
 # Sphinx build tree, if building in-source dir.
 docs/_build
 # VS2017 and VSCode config files.
