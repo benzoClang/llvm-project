@@ -17,15 +17,12 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifdef HAVE_VCS_VERSION_INC
-#include "VCSVersion.inc"
-#endif
-
 namespace clang {
 
 std::string getClangRepositoryPath() {
 #if defined(CLANG_REPOSITORY_STRING)
-  return CLANG_REPOSITORY_STRING;
+  StringRef URL(CLANG_REPOSITORY_STRING);
+  return URL;
 #else
 #ifdef CLANG_REPOSITORY
   StringRef URL(CLANG_REPOSITORY);
@@ -54,6 +51,10 @@ std::string getClangRepositoryPath() {
 }
 
 std::string getLLVMRepositoryPath() {
+#if defined(LLVM_REPOSITORY_STRING)
+  StringRef URL(LLVM_REPOSITORY_STRING);
+  return URL;
+#else
 #ifdef LLVM_REPOSITORY
   StringRef URL(LLVM_REPOSITORY);
 #else
@@ -68,6 +69,7 @@ std::string getLLVMRepositoryPath() {
     URL = URL.substr(Start);
 
   return URL;
+#endif
 }
 
 std::string getClangRevision() {
@@ -89,28 +91,12 @@ std::string getLLVMRevision() {
 std::string getClangFullRepositoryVersion() {
   std::string buf;
   llvm::raw_string_ostream OS(buf);
-  std::string Path = getClangRepositoryPath();
-  std::string Revision = getClangRevision();
-  if (!Path.empty() || !Revision.empty()) {
-    OS << '(';
-    if (!Path.empty())
-      OS << Path;
-    if (!Revision.empty()) {
-      if (!Path.empty())
-        OS << ' ';
-      OS << Revision;
-    }
-    OS << ')';
-  }
-  // Support LLVM in a separate repository.
-  std::string LLVMRev = getLLVMRevision();
-  if (!LLVMRev.empty() && LLVMRev != Revision) {
-    OS << " (";
-    std::string LLVMRepo = getLLVMRepositoryPath();
-    if (!LLVMRepo.empty())
-      OS << LLVMRepo << ' ';
-    OS << LLVMRev << ')';
-  }
+#if defined(CLANG_TC_DATE)
+  std::string Revision = CLANG_TC_DATE;
+#else
+  std::string Revision = "nodate";
+#endif
+  OS << Revision;
   return OS.str();
 }
 
@@ -124,7 +110,7 @@ std::string getClangToolFullVersion(StringRef ToolName) {
 #ifdef CLANG_VENDOR
   OS << CLANG_VENDOR;
 #endif
-  OS << ToolName << " version " CLANG_VERSION_STRING " "
+  OS << ToolName << " version " CLANG_VERSION_STRING "-"
      << getClangFullRepositoryVersion();
 
   return OS.str();
