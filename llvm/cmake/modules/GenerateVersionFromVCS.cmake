@@ -22,16 +22,18 @@ function(append_info name path)
   if(path)
     get_source_info("${path}" revision repository)
   endif()
-  if(revision)
+  set(TOOLCHAIN_REVISION "master")
+  if(TOOLCHAIN_REVISION)
     file(APPEND "${HEADER_FILE}.tmp"
-      "#define ${name}_REVISION \"${revision}\"\n")
+      "#define ${name}_REVISION \"${TOOLCHAIN_REVISION}\"\n")
   else()
     file(APPEND "${HEADER_FILE}.tmp"
       "#undef ${name}_REVISION\n")
   endif()
-  if(repository)
+  set(TOOLCHAIN_REPOSITORY "https://github.com/benzoClang/llvm-project")
+  if(TOOLCHAIN_REPOSITORY)
     file(APPEND "${HEADER_FILE}.tmp"
-      "#define ${name}_REPOSITORY \"${repository}\"\n")
+      "#define ${name}_REPOSITORY \"${TOOLCHAIN_REPOSITORY}\"\n")
   else()
     file(APPEND "${HEADER_FILE}.tmp"
       "#undef ${name}_REPOSITORY\n")
