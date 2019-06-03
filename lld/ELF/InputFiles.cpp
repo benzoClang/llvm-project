@@ -1416,9 +1416,7 @@ template <class ELFT> void SharedFile::parse() {
         name =
             saver.save((name + "@" + verName).toStringRef(versionedNameBuffer));
       }
-      Symbol *s = symtab->addSymbol(
-          Undefined{this, name, sym.getBinding(), sym.st_other, sym.getType()});
-      s->exportDynamic = true;
+      this->Undefs.insert(name);
       continue;
     }
 
