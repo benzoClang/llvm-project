@@ -153,6 +153,10 @@ static bool shouldDefineSym(SymbolAssignment *cmd) {
   Symbol *b = symtab->find(cmd->name);
   if (b && !b->isDefined())
     return true;
+  // It might also be referenced by a DSO.
+  for (InputFile *F : sharedFiles)
+    if (F->getUndefinedSymbols().count(cmd->name))
+      return true;
   return false;
 }
 

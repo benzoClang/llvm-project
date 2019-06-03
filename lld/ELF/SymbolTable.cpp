@@ -111,6 +111,24 @@ Symbol *SymbolTable::find(StringRef name) {
   return sym;
 }
 
+// This function takes care of the case in which shared libraries depend on
+// the user program (not the other way, which is usual). Shared libraries
+// may have undefined symbols, expecting that the user program provides
+// the definitions for them. An example is BSD's __progname symbol.
+// We need to put such symbols to the main program's .dynsym so that
+// shared libraries can find them.
+// Except this, we ignore undefined symbols in DSOs.
+template <class ELFT> void SymbolTable::scanShlibUndefined() {
+  for (InputFile *F : sharedFiles) {
+    for (StringRef U : F->getUndefinedSymbols()) {
+      Symbol *Sym = find(U);
+      if (!Sym || !Sym->isDefined())
+        continue;
+      Sym->exportDynamic = true;
+    }
+  }
+}
+
 // A version script/dynamic list is only meaningful for a Defined symbol.
 // A CommonSymbol will be converted to a Defined in replaceCommonSymbols().
 // A lazy symbol may be made Defined if an LTO libcall fetches it.
@@ -277,3 +295,8 @@ void SymbolTable::scanVersionScript() {
   // --dynamic-list.
   handleDynamicList();
 }
+
+template void SymbolTable::scanShlibUndefined<ELF32LE>();
+template void SymbolTable::scanShlibUndefined<ELF32BE>();
+template void SymbolTable::scanShlibUndefined<ELF64LE>();
+template void SymbolTable::scanShlibUndefined<ELF64BE>();
