@@ -80,6 +80,11 @@ cl::opt<bool> UseOldMemOpValueProf(
              "transitional and to be removed after switching. "),
     cl::init(false));
 
+llvm::cl::opt<bool>
+    EnableValueProfiling("enable-value-profiling", llvm::cl::ZeroOrMore,
+                         llvm::cl::desc("Enable value profiling"),
+                         llvm::cl::Hidden, llvm::cl::init(false));
+
 namespace {
 
 cl::opt<bool> DoHashBasedCounterSplit(
@@ -801,6 +806,9 @@ static std::string getVarName(InstrProfIncrementInst *Inc, StringRef Prefix) {
 }
 
 static inline bool shouldRecordFunctionAddr(Function *F) {
+  if (!EnableValueProfiling)
+    return false;
+
   // Check the linkage
   bool HasAvailableExternallyLinkage = F->hasAvailableExternallyLinkage();
   if (!F->hasLinkOnceLinkage() && !F->hasLocalLinkage() &&
