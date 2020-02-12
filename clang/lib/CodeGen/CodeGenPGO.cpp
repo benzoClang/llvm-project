@@ -22,10 +22,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/MD5.h"
 
-static llvm::cl::opt<bool>
-    EnableValueProfiling("enable-value-profiling", llvm::cl::ZeroOrMore,
-                         llvm::cl::desc("Enable value profiling"),
-                         llvm::cl::Hidden, llvm::cl::init(false));
+extern llvm::cl::opt<bool> EnableValueProfiling;
 
 using namespace clang;
 using namespace CodeGen;
