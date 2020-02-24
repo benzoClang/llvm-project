@@ -7,8 +7,8 @@
 
 ; CHECK-LABEL: test
 ; GENERIC: ldr
-; GENERIC: ldr
 ; GENERIC: str
+; GENERIC: ldr
 ; GENERIC: str
 ; USEAA: ldr
 ; USEAA: ldr

@@ -419,6 +419,10 @@ def FeatureNoPostRASched : SubtargetFeature<"disable-postra-scheduler",
     "DisablePostRAScheduler", "true",
     "Don't schedule again after register allocation">;
 
+// Enable use of alias analysis during code generation
+def FeatureUseAA : SubtargetFeature<"use-aa", "UseAA", "true",
+                                    "Use alias analysis during codegen">;
+
 // Armv8.5-A extensions
 
 def FeatureSB       : SubtargetFeature<"sb", "HasSB", "true",
@@ -597,6 +601,7 @@ def ProcExynos  : SubtargetFeature<"exynos", "ARMProcFamily", "Exynos",
                                    "Samsung Exynos processors",
                                    [FeatureZCZeroing,
                                     FeatureUseWideStrideVFP,
+                                    FeatureUseAA,
                                     FeatureSplatVFPToNeon,
                                     FeatureSlowVGETLNi32,
                                     FeatureSlowVDUP32,
@@ -1088,11 +1093,13 @@ def : ProcessorModel<"cortex-m3",   CortexM4Model,      [ARMv7m,
                                                          ProcM3,
                                                          FeaturePrefLoopAlign32,
                                                          FeatureUseMISched,
+                                                         FeatureUseAA,
                                                          FeatureHasNoBranchPredictor]>;
 
 def : ProcessorModel<"sc300",       CortexM4Model,      [ARMv7m,
                                                          ProcM3,
                                                          FeatureUseMISched,
+                                                         FeatureUseAA,
                                                          FeatureHasNoBranchPredictor]>;
 
 def : ProcessorModel<"cortex-m4", CortexM4Model,        [ARMv7em,
@@ -1101,6 +1108,7 @@ def : ProcessorModel<"cortex-m4", CortexM4Model,        [ARMv7em,
                                                          FeatureHasSlowFPVMLx,
                                                          FeatureHasSlowFPVFMx,
                                                          FeatureUseMISched,
+                                                         FeatureUseAA,
                                                          FeatureHasNoBranchPredictor]>;
 
 def : ProcNoItin<"cortex-m7",                           [ARMv7em,
@@ -1116,6 +1124,7 @@ def : ProcessorModel<"cortex-m33", CortexM4Model,       [ARMv8mMainline,
                                                          FeatureHasSlowFPVMLx,
                                                          FeatureHasSlowFPVFMx,
                                                          FeatureUseMISched,
+                                                         FeatureUseAA,
                                                          FeatureHasNoBranchPredictor]>;
 
 def : ProcessorModel<"cortex-m35p", CortexM4Model,      [ARMv8mMainline,
@@ -1125,6 +1134,7 @@ def : ProcessorModel<"cortex-m35p", CortexM4Model,      [ARMv8mMainline,
                                                          FeatureHasSlowFPVMLx,
                                                          FeatureHasSlowFPVFMx,
                                                          FeatureUseMISched,
+                                                         FeatureUseAA,
                                                          FeatureHasNoBranchPredictor]>;
 
 
@@ -1233,7 +1243,8 @@ def : ProcNoItin<"kryo",                                [ARMv8a, ProcKryo,
 
 def : ProcessorModel<"cortex-r52", CortexR52Model,      [ARMv8r, ProcR52,
                                                          FeatureUseMISched,
-                                                         FeatureFPAO]>;
+                                                         FeatureFPAO,
+                                                         FeatureUseAA]>;
 
 //===----------------------------------------------------------------------===//
 // Register File Description
