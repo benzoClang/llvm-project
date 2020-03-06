@@ -12,6 +12,11 @@
 #include "gwp_asan/optional/segv_handler.h"
 #include "gwp_asan/options.h"
 
+// Android: Fix build error for compiler-rt
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif
+
 #include <assert.h>
 #include <inttypes.h>
 #include <signal.h>
