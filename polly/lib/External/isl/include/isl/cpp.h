@@ -1533,6 +1533,7 @@ public:
   inline isl::map domain_factor_range() const;
   inline isl::map domain_product(isl::map map2) const;
   static inline isl::map empty(isl::space space);
+  inline isl::map eq_at(isl::multi_pw_aff mpa) const;
   inline isl::map factor_domain() const;
   inline isl::map factor_range() const;
   inline isl::map flatten() const;
@@ -1557,6 +1558,10 @@ public:
   inline bool is_single_valued() const;
   inline bool is_strict_subset(const isl::map &map2) const;
   inline bool is_subset(const isl::map &map2) const;
+  inline isl::map lex_ge_at(isl::multi_pw_aff mpa) const;
+  inline isl::map lex_gt_at(isl::multi_pw_aff mpa) const;
+  inline isl::map lex_le_at(isl::multi_pw_aff mpa) const;
+  inline isl::map lex_lt_at(isl::multi_pw_aff mpa) const;
   inline isl::map lexmax() const;
   inline isl::pw_multi_aff lexmax_pw_multi_aff() const;
   inline isl::map lexmin() const;
@@ -1629,6 +1634,8 @@ public:
   inline isl::aff get_at(int pos) const;
   inline isl::multi_val constant_multi_val() const;
   inline isl::multi_val get_constant_multi_val() const;
+  inline isl::aff_list list() const;
+  inline isl::aff_list get_list() const;
   inline isl::space space() const;
   inline isl::space get_space() const;
   inline isl::multi_aff gist(isl::set context) const;
@@ -1683,6 +1690,8 @@ public:
   inline isl::multi_id flat_range_product(isl::multi_id multi2) const;
   inline isl::id at(int pos) const;
   inline isl::id get_at(int pos) const;
+  inline isl::id_list list() const;
+  inline isl::id_list get_list() const;
   inline isl::space space() const;
   inline isl::space get_space() const;
   inline bool plain_is_equal(const isl::multi_id &multi2) const;
@@ -1734,6 +1743,8 @@ public:
   inline isl::multi_pw_aff flat_range_product(isl::multi_pw_aff multi2) const;
   inline isl::pw_aff at(int pos) const;
   inline isl::pw_aff get_at(int pos) const;
+  inline isl::pw_aff_list list() const;
+  inline isl::pw_aff_list get_list() const;
   inline isl::space space() const;
   inline isl::space get_space() const;
   inline isl::multi_pw_aff gist(isl::set set) const;
@@ -1760,6 +1771,7 @@ public:
   inline isl::multi_pw_aff set_at(int pos, isl::pw_aff el) const;
   inline unsigned size() const;
   inline isl::multi_pw_aff sub(isl::multi_pw_aff multi2) const;
+  inline isl::multi_pw_aff union_add(isl::multi_pw_aff mpa2) const;
   static inline isl::multi_pw_aff zero(isl::space space);
 };
 
@@ -1799,6 +1811,8 @@ public:
   inline isl::multi_union_pw_aff flat_range_product(isl::multi_union_pw_aff multi2) const;
   inline isl::union_pw_aff at(int pos) const;
   inline isl::union_pw_aff get_at(int pos) const;
+  inline isl::union_pw_aff_list list() const;
+  inline isl::union_pw_aff_list get_list() const;
   inline isl::space space() const;
   inline isl::space get_space() const;
   inline isl::multi_union_pw_aff gist(isl::union_set context) const;
@@ -1854,6 +1868,8 @@ public:
   inline isl::multi_val flat_range_product(isl::multi_val multi2) const;
   inline isl::val at(int pos) const;
   inline isl::val get_at(int pos) const;
+  inline isl::val_list list() const;
+  inline isl::val_list get_list() const;
   inline isl::space space() const;
   inline isl::space get_space() const;
   inline isl::multi_val neg() const;
@@ -2954,6 +2970,7 @@ public:
   inline isl::union_pw_multi_aff intersect_domain_wrapped_range(isl::union_set uset) const;
   inline isl::union_pw_multi_aff intersect_params(isl::set set) const;
   inline bool isa_pw_multi_aff() const;
+  inline bool plain_is_empty() const;
   inline isl::union_pw_multi_aff pullback(isl::union_pw_multi_aff upma2) const;
   inline isl::union_pw_multi_aff range_factor_domain() const;
   inline isl::union_pw_multi_aff range_factor_range() const;
@@ -7368,6 +7385,18 @@ isl::map map::empty(isl::space space)
   return manage(res);
 }
 
+isl::map map::eq_at(isl::multi_pw_aff mpa) const
+{
+  if (!ptr || mpa.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_eq_at_multi_pw_aff(copy(), mpa.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
 isl::map map::factor_domain() const
 {
   if (!ptr)
@@ -7656,6 +7685,54 @@ bool map::is_subset(const isl::map &map2) const
   if (res < 0)
     exception::throw_last_error(saved_ctx);
   return res;
+}
+
+isl::map map::lex_ge_at(isl::multi_pw_aff mpa) const
+{
+  if (!ptr || mpa.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_lex_ge_at_multi_pw_aff(copy(), mpa.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::map map::lex_gt_at(isl::multi_pw_aff mpa) const
+{
+  if (!ptr || mpa.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_lex_gt_at_multi_pw_aff(copy(), mpa.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::map map::lex_le_at(isl::multi_pw_aff mpa) const
+{
+  if (!ptr || mpa.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_lex_le_at_multi_pw_aff(copy(), mpa.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::map map::lex_lt_at(isl::multi_pw_aff mpa) const
+{
+  if (!ptr || mpa.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_lex_lt_at_multi_pw_aff(copy(), mpa.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
 }
 
 isl::map map::lexmax() const
@@ -8258,6 +8335,23 @@ isl::multi_val multi_aff::get_constant_multi_val() const
   return constant_multi_val();
 }
 
+isl::aff_list multi_aff::list() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_multi_aff_get_list(get());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::aff_list multi_aff::get_list() const
+{
+  return list();
+}
+
 isl::space multi_aff::space() const
 {
   if (!ptr)
@@ -8637,6 +8731,23 @@ isl::id multi_id::get_at(int pos) const
   return at(pos);
 }
 
+isl::id_list multi_id::list() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_multi_id_get_list(get());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::id_list multi_id::get_list() const
+{
+  return list();
+}
+
 isl::space multi_id::space() const
 {
   if (!ptr)
@@ -8980,6 +9091,23 @@ isl::pw_aff multi_pw_aff::get_at(int pos) const
   return at(pos);
 }
 
+isl::pw_aff_list multi_pw_aff::list() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_multi_pw_aff_get_list(get());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::pw_aff_list multi_pw_aff::get_list() const
+{
+  return list();
+}
+
 isl::space multi_pw_aff::space() const
 {
   if (!ptr)
@@ -9270,6 +9398,18 @@ isl::multi_pw_aff multi_pw_aff::sub(isl::multi_pw_aff multi2) const
   return manage(res);
 }
 
+isl::multi_pw_aff multi_pw_aff::union_add(isl::multi_pw_aff mpa2) const
+{
+  if (!ptr || mpa2.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_multi_pw_aff_union_add(copy(), mpa2.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
 isl::multi_pw_aff multi_pw_aff::zero(isl::space space)
 {
   if (space.is_null())
@@ -9484,6 +9624,23 @@ isl::union_pw_aff multi_union_pw_aff::at(int pos) const
 isl::union_pw_aff multi_union_pw_aff::get_at(int pos) const
 {
   return at(pos);
+}
+
+isl::union_pw_aff_list multi_union_pw_aff::list() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_multi_union_pw_aff_get_list(get());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::union_pw_aff_list multi_union_pw_aff::get_list() const
+{
+  return list();
 }
 
 isl::space multi_union_pw_aff::space() const
@@ -9870,6 +10027,23 @@ isl::val multi_val::at(int pos) const
 isl::val multi_val::get_at(int pos) const
 {
   return at(pos);
+}
+
+isl::val_list multi_val::list() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_multi_val_get_list(get());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::val_list multi_val::get_list() const
+{
+  return list();
 }
 
 isl::space multi_val::space() const
@@ -16727,6 +16901,18 @@ bool union_pw_multi_aff::isa_pw_multi_aff() const
   auto saved_ctx = ctx();
   options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
   auto res = isl_union_pw_multi_aff_isa_pw_multi_aff(get());
+  if (res < 0)
+    exception::throw_last_error(saved_ctx);
+  return res;
+}
+
+bool union_pw_multi_aff::plain_is_empty() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_union_pw_multi_aff_plain_is_empty(get());
   if (res < 0)
     exception::throw_last_error(saved_ctx);
   return res;

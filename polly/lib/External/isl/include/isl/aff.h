@@ -859,6 +859,9 @@ __isl_export
 __isl_give isl_pw_multi_aff *isl_union_pw_multi_aff_as_pw_multi_aff(
 	__isl_take isl_union_pw_multi_aff *upma);
 
+__isl_export
+isl_bool isl_union_pw_multi_aff_plain_is_empty(
+	__isl_keep isl_union_pw_multi_aff *upma);
 isl_bool isl_union_pw_multi_aff_involves_nan(
 	__isl_keep isl_union_pw_multi_aff *upma);
 isl_bool isl_union_pw_multi_aff_plain_is_equal(
@@ -984,6 +987,10 @@ __isl_overload
 __isl_give isl_multi_pw_aff *isl_multi_pw_aff_pullback_multi_pw_aff(
 	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2);
 
+__isl_export
+__isl_give isl_multi_pw_aff *isl_multi_pw_aff_union_add(
+	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2);
+
 __isl_give isl_multi_pw_aff *isl_multi_pw_aff_move_dims(
 	__isl_take isl_multi_pw_aff *pma,
 	enum isl_dim_type dst_type, unsigned dst_pos,
@@ -999,7 +1006,11 @@ __isl_give isl_multi_pw_aff *isl_multi_pw_aff_from_pw_multi_aff(
 
 __isl_give isl_map *isl_multi_pw_aff_eq_map(__isl_take isl_multi_pw_aff *mpa1,
 	__isl_take isl_multi_pw_aff *mpa2);
+__isl_give isl_map *isl_multi_pw_aff_lex_le_map(
+	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2);
 __isl_give isl_map *isl_multi_pw_aff_lex_lt_map(
+	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2);
+__isl_give isl_map *isl_multi_pw_aff_lex_ge_map(
 	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2);
 __isl_give isl_map *isl_multi_pw_aff_lex_gt_map(
 	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2);
