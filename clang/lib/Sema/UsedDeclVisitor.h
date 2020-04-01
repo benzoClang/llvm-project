@@ -84,18 +84,6 @@ public:
   void VisitCXXDefaultArgExpr(CXXDefaultArgExpr *E) {
     asImpl().Visit(E->getExpr());
   }
-
-  void visitUsedDecl(SourceLocation Loc, Decl *D) {
-    if (auto *CD = dyn_cast<CapturedDecl>(D)) {
-      if (auto *S = CD->getBody()) {
-        asImpl().Visit(S);
-      }
-    } else if (auto *CD = dyn_cast<BlockDecl>(D)) {
-      if (auto *S = CD->getBody()) {
-        asImpl().Visit(S);
-      }
-    }
-  }
 };
 } // end namespace clang
 
