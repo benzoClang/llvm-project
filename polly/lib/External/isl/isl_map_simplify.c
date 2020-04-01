@@ -1775,7 +1775,7 @@ __isl_give isl_basic_set *isl_basic_set_eliminate(
  * Therefore, start over after calling
  * isl_basic_map_drop_constraints_involving_dims.
  */
-__isl_give isl_basic_map *isl_basic_map_drop_constraint_involving_unknown_divs(
+__isl_give isl_basic_map *isl_basic_map_drop_constraints_involving_unknown_divs(
 	__isl_take isl_basic_map *bmap)
 {
 	isl_bool known;
@@ -1811,13 +1811,26 @@ __isl_give isl_basic_map *isl_basic_map_drop_constraint_involving_unknown_divs(
 	return bmap;
 }
 
+/* Remove all constraints from "bset" that reference any unknown local
+ * variables (directly or indirectly).
+ */
+__isl_give isl_basic_set *isl_basic_set_drop_constraints_involving_unknown_divs(
+	__isl_take isl_basic_set *bset)
+{
+	isl_basic_map *bmap;
+
+	bmap = bset_to_bmap(bset);
+	bmap = isl_basic_map_drop_constraints_involving_unknown_divs(bmap);
+	return bset_from_bmap(bmap);
+}
+
 /* Remove all constraints from "map" that reference any unknown local
  * variables (directly or indirectly).
  *
  * Since constraints may get dropped from the basic maps,
  * they may no longer be disjoint from each other.
  */
-__isl_give isl_map *isl_map_drop_constraint_involving_unknown_divs(
+__isl_give isl_map *isl_map_drop_constraints_involving_unknown_divs(
 	__isl_take isl_map *map)
 {
 	int i;
@@ -1835,7 +1848,7 @@ __isl_give isl_map *isl_map_drop_constraint_involving_unknown_divs(
 
 	for (i = 0; i < map->n; ++i) {
 		map->p[i] =
-		    isl_basic_map_drop_constraint_involving_unknown_divs(
+		    isl_basic_map_drop_constraints_involving_unknown_divs(
 								    map->p[i]);
 		if (!map->p[i])
 			return isl_map_free(map);
@@ -4860,7 +4873,7 @@ static __isl_give isl_basic_map *isl_basic_map_drop_redundant_divs_ineq(
 	isl_size off;
 	int *pairs = NULL;
 	int n = 0;
-	int n_ineq;
+	isl_size n_ineq;
 
 	if (!bmap)
 		goto error;
@@ -4875,6 +4888,8 @@ static __isl_give isl_basic_map *isl_basic_map_drop_redundant_divs_ineq(
 		goto error;
 
 	n_ineq = isl_basic_map_n_inequality(bmap);
+	if (n_ineq < 0)
+		goto error;
 	for (i = 0; i < bmap->n_div; ++i) {
 		int pos, neg;
 		int last_pos, last_neg;
