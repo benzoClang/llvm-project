@@ -111,29 +111,15 @@ StringRef elf::getOutputSectionName(const InputSectionBase *s) {
     }
   }
 
-  // A BssSection created for a common symbol is identified as "COMMON" in
-  // linker scripts. It should go to .bss section.
-  if (s->name == "COMMON")
-    return ".bss";
-
-  if (script->hasSectionsCommand)
-    return s->name;
-
-  // When no SECTIONS is specified, emulate GNU ld's internal linker scripts
-  // by grouping sections with certain prefixes.
-
-  // GNU ld places text sections with prefix ".text.hot.", ".text.unknown.",
-  // ".text.unlikely.", ".text.startup." or ".text.exit." before others.
-  // We provide an option -z keep-text-section-prefix to group such sections
-  // into separate output sections. This is more flexible. See also
-  // sortISDBySectionOrder().
-  // ".text.unknown" means the hotness of the section is unknown. When
-  // SampleFDO is used, if a function doesn't have sample, it could be very
-  // cold or it could be a new function never being sampled. Those functions
-  // will be kept in the ".text.unknown" section.
+  // This check is for -z keep-text-section-prefix.  This option separates text
+  // sections with prefix ".text.hot", ".text.unlikely", ".text.startup" or
+  // ".text.exit".
+  // When enabled, this allows identifying the hot code region (.text.hot) in
+  // the final binary which can be selectively mapped to huge pages or mlocked,
+  // for instance.
   if (config->zKeepTextSectionPrefix)
-    for (StringRef v : {".text.hot.", ".text.unknown.", ".text.unlikely.",
-                        ".text.startup.", ".text.exit."})
+    for (StringRef v :
+         {".text.hot.", ".text.unlikely.", ".text.startup.", ".text.exit."})
       if (isSectionPrefix(v, s->name))
         return v.drop_back();
 
@@ -143,6 +129,11 @@ StringRef elf::getOutputSectionName(const InputSectionBase *s) {
         ".gcc_except_table.", ".tdata.", ".ARM.exidx.", ".ARM.extab."})
     if (isSectionPrefix(v, s->name))
       return v.drop_back();
+
+  // CommonSection is identified as "COMMON" in linker scripts.
+  // By default, it should go to .bss section.
+  if (s->name == "COMMON")
+    return ".bss";
 
   return s->name;
 }
