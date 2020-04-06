@@ -543,14 +543,14 @@ static int test_bounded(isl_ctx *ctx)
 /* Construct the basic set { [i] : 5 <= i <= N } */
 static int test_construction_1(isl_ctx *ctx)
 {
-	isl_space *dim;
+	isl_space *space;
 	isl_local_space *ls;
 	isl_basic_set *bset;
 	isl_constraint *c;
 
-	dim = isl_space_set_alloc(ctx, 1, 1);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 1, 1);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_inequality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, -1);
@@ -948,16 +948,16 @@ static int test_div(isl_ctx *ctx)
 {
 	const char *str;
 	int empty;
-	isl_space *dim;
+	isl_space *space;
 	isl_set *set;
 	isl_local_space *ls;
 	struct isl_basic_set *bset;
 	struct isl_constraint *c;
 
 	/* test 1 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_constant_si(c, -1);
@@ -978,9 +978,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 2 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_constant_si(c, 1);
@@ -1001,9 +1001,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 3 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_constant_si(c, 1);
@@ -1024,9 +1024,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 4 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_constant_si(c, 2);
@@ -1047,9 +1047,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 5 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, -1);
@@ -1068,9 +1068,9 @@ static int test_div(isl_ctx *ctx)
 	isl_local_space_free(ls);
 
 	/* test 6 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, -1);
@@ -1098,9 +1098,9 @@ static int test_div(isl_ctx *ctx)
 	 * and we end up with the original equality and div again.
 	 * Perhaps we can avoid the introduction of this temporary div.
 	 */
-	dim = isl_space_set_alloc(ctx, 0, 4);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 4);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, -1);
@@ -1119,9 +1119,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 8 */
-	dim = isl_space_set_alloc(ctx, 0, 5);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 5);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, -1);
@@ -1146,9 +1146,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 9 */
-	dim = isl_space_set_alloc(ctx, 0, 4);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 4);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, 1);
@@ -1172,9 +1172,9 @@ static int test_div(isl_ctx *ctx)
 	isl_basic_set_free(bset);
 
 	/* test 10 */
-	dim = isl_space_set_alloc(ctx, 0, 3);
-	bset = isl_basic_set_universe(isl_space_copy(dim));
-	ls = isl_local_space_from_space(dim);
+	space = isl_space_set_alloc(ctx, 0, 3);
+	bset = isl_basic_set_universe(isl_space_copy(space));
+	ls = isl_local_space_from_space(space);
 
 	c = isl_constraint_alloc_equality(isl_local_space_copy(ls));
 	c = isl_constraint_set_coefficient_si(c, isl_dim_set, 0, 1);
@@ -1501,6 +1501,9 @@ static struct {
 	  "[N] -> { S[N, N] }", "{ S[10, 10] }" },
 	{ "{ S[x, y] : 0 <= x + y, x - y < 10 }",
 	  "{ S[0, -4] }", "{ S[10, 9] }" },
+	{ "{ [i=0:10] : exists (e0, e1: 3e1 >= 1 + 2e0 and "
+	    "8e1 <= -1 + 5i - 5e0 and 2e1 >= 1 + 2i - 5e0) }",
+	  "{ [0] }", "{ [11] }" },
 };
 
 /* Perform basic isl_set_get_simple_fixed_box_hull tests.
@@ -2826,12 +2829,12 @@ static int test_isl_bool(isl_ctx *ctx)
 
 static int test_lex(struct isl_ctx *ctx)
 {
-	isl_space *dim;
+	isl_space *space;
 	isl_map *map;
 	int empty;
 
-	dim = isl_space_set_alloc(ctx, 0, 0);
-	map = isl_map_lex_le(dim);
+	space = isl_space_set_alloc(ctx, 0, 0);
+	map = isl_map_lex_le(space);
 	empty = isl_map_is_empty(map);
 	isl_map_free(map);
 
@@ -3211,7 +3214,7 @@ static isl_stat uset_check_equal(__isl_keep isl_union_set *uset,
 static int test_dep(struct isl_ctx *ctx)
 {
 	const char *str;
-	isl_space *dim;
+	isl_space *space;
 	isl_map *map;
 	isl_access_info *ai;
 	isl_flow *flow;
@@ -3233,9 +3236,9 @@ static int test_dep(struct isl_ctx *ctx)
 	ai = isl_access_info_add_source(ai, map, 1, &depth);
 
 	flow = isl_access_info_compute_flow(ai);
-	dim = isl_space_alloc(ctx, 0, 3, 3);
-	mm.must = isl_map_empty(isl_space_copy(dim));
-	mm.may = isl_map_empty(dim);
+	space = isl_space_alloc(ctx, 0, 3, 3);
+	mm.must = isl_map_empty(isl_space_copy(space));
+	mm.may = isl_map_empty(space);
 
 	isl_flow_foreach(flow, collect_must_may, &mm);
 
@@ -3263,9 +3266,9 @@ static int test_dep(struct isl_ctx *ctx)
 	ai = isl_access_info_add_source(ai, map, 0, &depth);
 
 	flow = isl_access_info_compute_flow(ai);
-	dim = isl_space_alloc(ctx, 0, 3, 3);
-	mm.must = isl_map_empty(isl_space_copy(dim));
-	mm.may = isl_map_empty(dim);
+	space = isl_space_alloc(ctx, 0, 3, 3);
+	mm.must = isl_map_empty(isl_space_copy(space));
+	mm.may = isl_map_empty(space);
 
 	isl_flow_foreach(flow, collect_must_may, &mm);
 
@@ -3292,9 +3295,9 @@ static int test_dep(struct isl_ctx *ctx)
 	ai = isl_access_info_add_source(ai, map, 0, &depth);
 
 	flow = isl_access_info_compute_flow(ai);
-	dim = isl_space_alloc(ctx, 0, 3, 3);
-	mm.must = isl_map_empty(isl_space_copy(dim));
-	mm.may = isl_map_empty(dim);
+	space = isl_space_alloc(ctx, 0, 3, 3);
+	mm.must = isl_map_empty(isl_space_copy(space));
+	mm.may = isl_map_empty(space);
 
 	isl_flow_foreach(flow, collect_must_may, &mm);
 
@@ -3322,9 +3325,9 @@ static int test_dep(struct isl_ctx *ctx)
 	ai = isl_access_info_add_source(ai, map, 0, &depth);
 
 	flow = isl_access_info_compute_flow(ai);
-	dim = isl_space_alloc(ctx, 0, 3, 3);
-	mm.must = isl_map_empty(isl_space_copy(dim));
-	mm.may = isl_map_empty(dim);
+	space = isl_space_alloc(ctx, 0, 3, 3);
+	mm.must = isl_map_empty(isl_space_copy(space));
+	mm.may = isl_map_empty(space);
 
 	isl_flow_foreach(flow, collect_must_may, &mm);
 
@@ -3352,9 +3355,9 @@ static int test_dep(struct isl_ctx *ctx)
 	ai = isl_access_info_add_source(ai, map, 0, &depth);
 
 	flow = isl_access_info_compute_flow(ai);
-	dim = isl_space_alloc(ctx, 0, 3, 3);
-	mm.must = isl_map_empty(isl_space_copy(dim));
-	mm.may = isl_map_empty(dim);
+	space = isl_space_alloc(ctx, 0, 3, 3);
+	mm.must = isl_map_empty(isl_space_copy(space));
+	mm.may = isl_map_empty(space);
 
 	isl_flow_foreach(flow, collect_must_may, &mm);
 
@@ -3380,9 +3383,9 @@ static int test_dep(struct isl_ctx *ctx)
 	ai = isl_access_info_add_source(ai, map, 1, &depth);
 
 	flow = isl_access_info_compute_flow(ai);
-	dim = isl_space_alloc(ctx, 0, 5, 5);
-	mm.must = isl_map_empty(isl_space_copy(dim));
-	mm.may = isl_map_empty(dim);
+	space = isl_space_alloc(ctx, 0, 5, 5);
+	mm.must = isl_map_empty(isl_space_copy(space));
+	mm.may = isl_map_empty(space);
 
 	isl_flow_foreach(flow, collect_must_may, &mm);
 
@@ -10001,6 +10004,18 @@ struct {
 	  "{ rat: coefficients[[cst] -> [a]] }" },
 	{ "{ rat: [i] : }",
 	  "{ rat: coefficients[[cst] -> [0]] : cst >= 0 }" },
+	{ "{ [0:,1,2:3] }",
+	  "{ rat: coefficients[[c_cst] -> [a, b, c]] : "
+		"a >= 0 and 2c >= -c_cst - b and 3c >= -c_cst - b }" },
+	{ "[M, N] -> { [x = (1 - N):-1, -4x:(M - 4x)] }",
+	  "{ rat: coefficients[[c_cst, c_M = 0:, c_N = 0:] -> [a, b = -c_M:]] :"
+		"4b >= -c_N + a and 4b >= -c_cst - 2c_N + a }" },
+	{ "{ rat : [x, y] : 1 <= 2x <= 9 and 2 <= 3y <= 16 }",
+	  "{ rat: coefficients[[c_cst] -> [c_x, c_y]] : "
+		"4c_y >= -6c_cst - 3c_x and 4c_y >= -6c_cst - 27c_x and "
+		"32c_y >= -6c_cst - 3c_x and 32c_y >= -6c_cst - 27c_x }" },
+	{ "{ [x, y, z] : 3y <= 2x - 2 and y >= -2 + 2x and 2y >= 2 - x }",
+	  "{ rat: coefficients[[cst] -> [a, b, c]] }" },
 };
 
 struct {

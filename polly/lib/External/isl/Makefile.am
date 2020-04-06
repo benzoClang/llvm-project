@@ -453,6 +453,7 @@ DISTCLEANFILES = \
 EXTRA_DIST = \
 	LICENSE \
 	isl_config_post.h \
+	isl_aff_lex_templ.c \
 	isl_align_params_templ.c \
 	isl_align_params_bin_templ.c \
 	basis_reduction_templ.c \
@@ -503,6 +504,7 @@ EXTRA_DIST = \
 	isl_multi_intersect.c \
 	isl_multi_identity_templ.c \
 	isl_multi_locals_templ.c \
+	isl_multi_min_max_templ.c \
 	isl_multi_move_dims_templ.c \
 	isl_multi_nan_templ.c \
 	isl_multi_param_templ.c \
@@ -510,6 +512,7 @@ EXTRA_DIST = \
 	isl_multi_read_no_explicit_domain_templ.c \
 	isl_multi_splice_templ.c \
 	isl_multi_tuple_id_templ.c \
+	isl_multi_union_add_templ.c \
 	isl_multi_zero_templ.c \
 	opt_type.h \
 	print_templ.c \
