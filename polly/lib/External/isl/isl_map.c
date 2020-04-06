@@ -67,12 +67,12 @@ static __isl_keep const isl_basic_map *const_bset_to_bmap(
 #define TYPE	isl_basic_map
 #include "has_single_reference_templ.c"
 
-static unsigned pos(__isl_keep isl_space *dim, enum isl_dim_type type)
+static unsigned pos(__isl_keep isl_space *space, enum isl_dim_type type)
 {
 	switch (type) {
 	case isl_dim_param:	return 1;
-	case isl_dim_in:	return 1 + dim->nparam;
-	case isl_dim_out:	return 1 + dim->nparam + dim->n_in;
+	case isl_dim_in:	return 1 + space->nparam;
+	case isl_dim_out:	return 1 + space->nparam + space->n_in;
 	default:		return 0;
 	}
 }
@@ -221,37 +221,37 @@ isl_size isl_basic_map_total_dim(__isl_keep const isl_basic_map *bmap)
 }
 
 /* Return the number of equality constraints in the description of "bmap".
- * Return -1 on error.
+ * Return isl_size_error on error.
  */
-int isl_basic_map_n_equality(__isl_keep isl_basic_map *bmap)
+isl_size isl_basic_map_n_equality(__isl_keep isl_basic_map *bmap)
 {
 	if (!bmap)
-		return -1;
+		return isl_size_error;
 	return bmap->n_eq;
 }
 
 /* Return the number of equality constraints in the description of "bset".
- * Return -1 on error.
+ * Return isl_size_error on error.
  */
-int isl_basic_set_n_equality(__isl_keep isl_basic_set *bset)
+isl_size isl_basic_set_n_equality(__isl_keep isl_basic_set *bset)
 {
 	return isl_basic_map_n_equality(bset_to_bmap(bset));
 }
 
 /* Return the number of inequality constraints in the description of "bmap".
- * Return -1 on error.
+ * Return isl_size_error on error.
  */
-int isl_basic_map_n_inequality(__isl_keep isl_basic_map *bmap)
+isl_size isl_basic_map_n_inequality(__isl_keep isl_basic_map *bmap)
 {
 	if (!bmap)
-		return -1;
+		return isl_size_error;
 	return bmap->n_ineq;
 }
 
 /* Return the number of inequality constraints in the description of "bset".
- * Return -1 on error.
+ * Return isl_size_error on error.
  */
-int isl_basic_set_n_inequality(__isl_keep isl_basic_set *bset)
+isl_size isl_basic_set_n_inequality(__isl_keep isl_basic_set *bset)
 {
 	return isl_basic_map_n_inequality(bset_to_bmap(bset));
 }
@@ -1276,17 +1276,17 @@ struct isl_basic_set *isl_basic_set_alloc(struct isl_ctx *ctx,
 	return bset_from_bmap(bmap);
 }
 
-__isl_give isl_basic_set *isl_basic_set_alloc_space(__isl_take isl_space *dim,
+__isl_give isl_basic_set *isl_basic_set_alloc_space(__isl_take isl_space *space,
 		unsigned extra, unsigned n_eq, unsigned n_ineq)
 {
 	struct isl_basic_map *bmap;
-	if (!dim)
+	if (!space)
 		return NULL;
-	isl_assert(dim->ctx, dim->n_in == 0, goto error);
-	bmap = isl_basic_map_alloc_space(dim, extra, n_eq, n_ineq);
+	isl_assert(space->ctx, space->n_in == 0, goto error);
+	bmap = isl_basic_map_alloc_space(space, extra, n_eq, n_ineq);
 	return bset_from_bmap(bmap);
 error:
-	isl_space_free(dim);
+	isl_space_free(space);
 	return NULL;
 }
 
@@ -1313,13 +1313,13 @@ struct isl_basic_map *isl_basic_map_alloc(struct isl_ctx *ctx,
 		unsigned n_eq, unsigned n_ineq)
 {
 	struct isl_basic_map *bmap;
-	isl_space *dim;
+	isl_space *space;
 
-	dim = isl_space_alloc(ctx, nparam, in, out);
-	if (!dim)
+	space = isl_space_alloc(ctx, nparam, in, out);
+	if (!space)
 		return NULL;
 
-	bmap = isl_basic_map_alloc_space(dim, extra, n_eq, n_ineq);
+	bmap = isl_basic_map_alloc_space(space, extra, n_eq, n_ineq);
 	return bmap;
 }
 
@@ -5174,24 +5174,26 @@ static __isl_give isl_map *map_lex_lte(__isl_take isl_space *space, int equal)
 	return map_lex_lte_first(space, space->n_out, equal);
 }
 
-__isl_give isl_map *isl_map_lex_lt_first(__isl_take isl_space *dim, unsigned n)
+__isl_give isl_map *isl_map_lex_lt_first(__isl_take isl_space *space,
+	unsigned n)
 {
-	return map_lex_lte_first(dim, n, 0);
+	return map_lex_lte_first(space, n, 0);
 }
 
-__isl_give isl_map *isl_map_lex_le_first(__isl_take isl_space *dim, unsigned n)
+__isl_give isl_map *isl_map_lex_le_first(__isl_take isl_space *space,
+	unsigned n)
 {
-	return map_lex_lte_first(dim, n, 1);
+	return map_lex_lte_first(space, n, 1);
 }
 
-__isl_give isl_map *isl_map_lex_lt(__isl_take isl_space *set_dim)
+__isl_give isl_map *isl_map_lex_lt(__isl_take isl_space *set_space)
 {
-	return map_lex_lte(isl_space_map_from_set(set_dim), 0);
+	return map_lex_lte(isl_space_map_from_set(set_space), 0);
 }
 
-__isl_give isl_map *isl_map_lex_le(__isl_take isl_space *set_dim)
+__isl_give isl_map *isl_map_lex_le(__isl_take isl_space *set_space)
 {
-	return map_lex_lte(isl_space_map_from_set(set_dim), 1);
+	return map_lex_lte(isl_space_map_from_set(set_space), 1);
 }
 
 static __isl_give isl_map *map_lex_gte_first(__isl_take isl_space *space,
@@ -5228,24 +5230,26 @@ static __isl_give isl_map *map_lex_gte(__isl_take isl_space *space, int equal)
 	return map_lex_gte_first(space, space->n_out, equal);
 }
 
-__isl_give isl_map *isl_map_lex_gt_first(__isl_take isl_space *dim, unsigned n)
+__isl_give isl_map *isl_map_lex_gt_first(__isl_take isl_space *space,
+	unsigned n)
 {
-	return map_lex_gte_first(dim, n, 0);
+	return map_lex_gte_first(space, n, 0);
 }
 
-__isl_give isl_map *isl_map_lex_ge_first(__isl_take isl_space *dim, unsigned n)
+__isl_give isl_map *isl_map_lex_ge_first(__isl_take isl_space *space,
+	unsigned n)
 {
-	return map_lex_gte_first(dim, n, 1);
+	return map_lex_gte_first(space, n, 1);
 }
 
-__isl_give isl_map *isl_map_lex_gt(__isl_take isl_space *set_dim)
+__isl_give isl_map *isl_map_lex_gt(__isl_take isl_space *set_space)
 {
-	return map_lex_gte(isl_space_map_from_set(set_dim), 0);
+	return map_lex_gte(isl_space_map_from_set(set_space), 0);
 }
 
-__isl_give isl_map *isl_map_lex_ge(__isl_take isl_space *set_dim)
+__isl_give isl_map *isl_map_lex_ge(__isl_take isl_space *set_space)
 {
-	return map_lex_gte(isl_space_map_from_set(set_dim), 1);
+	return map_lex_gte(isl_space_map_from_set(set_space), 1);
 }
 
 __isl_give isl_map *isl_set_lex_le_set(__isl_take isl_set *set1,
@@ -5650,10 +5654,10 @@ error:
 }
 
 __isl_give isl_basic_set *isl_basic_set_reset_space(
-	__isl_take isl_basic_set *bset, __isl_take isl_space *dim)
+	__isl_take isl_basic_set *bset, __isl_take isl_space *space)
 {
 	return bset_from_bmap(isl_basic_map_reset_space(bset_to_bmap(bset),
-							dim));
+							space));
 }
 
 /* Check that the total dimensions of "map" and "space" are the same.
@@ -5730,9 +5734,9 @@ error:
 }
 
 __isl_give isl_set *isl_set_reset_space(__isl_take isl_set *set,
-	__isl_take isl_space *dim)
+	__isl_take isl_space *space)
 {
-	return set_from_map(isl_map_reset_space(set_to_map(set), dim));
+	return set_from_map(isl_map_reset_space(set_to_map(set), space));
 }
 
 /* Compute the parameter domain of the given basic set.
@@ -6171,14 +6175,14 @@ __isl_give isl_basic_set *isl_basic_set_nat_universe(
 	return isl_basic_map_nat_universe(space);
 }
 
-__isl_give isl_map *isl_map_nat_universe(__isl_take isl_space *dim)
+__isl_give isl_map *isl_map_nat_universe(__isl_take isl_space *space)
 {
-	return isl_map_from_basic_map(isl_basic_map_nat_universe(dim));
+	return isl_map_from_basic_map(isl_basic_map_nat_universe(space));
 }
 
-__isl_give isl_set *isl_set_nat_universe(__isl_take isl_space *dim)
+__isl_give isl_set *isl_set_nat_universe(__isl_take isl_space *space)
 {
-	return isl_map_nat_universe(dim);
+	return isl_map_nat_universe(space);
 }
 
 __isl_give isl_map *isl_map_empty(__isl_take isl_space *space)
@@ -6380,19 +6384,6 @@ __isl_give isl_basic_set *isl_basic_set_fix(__isl_take isl_basic_set *bset,
 {
 	return bset_from_bmap(isl_basic_map_fix(bset_to_bmap(bset),
 						    type, pos, value));
-}
-
-struct isl_basic_map *isl_basic_map_fix_input_si(struct isl_basic_map *bmap,
-		unsigned input, int value)
-{
-	return isl_basic_map_fix_si(bmap, isl_dim_in, input, value);
-}
-
-struct isl_basic_set *isl_basic_set_fix_dim_si(struct isl_basic_set *bset,
-		unsigned dim, int value)
-{
-	return bset_from_bmap(isl_basic_map_fix_si(bset_to_bmap(bset),
-					isl_dim_set, dim, value));
 }
 
 /* Remove the basic map at position "i" from "map" if this basic map
@@ -7188,7 +7179,7 @@ static __isl_give isl_map *isl_map_partial_lexopt_aligned(
 
 	pma = isl_map_partial_lexopt_aligned_pw_multi_aff(map, dom, empty,
 							flags);
-	return isl_map_from_pw_multi_aff(pma);
+	return isl_map_from_pw_multi_aff_internal(pma);
 error:
 	if (empty)
 		*empty = NULL;
@@ -8523,7 +8514,7 @@ isl_stat isl_map_check_equal_tuples(__isl_keep isl_map *map)
 __isl_give isl_set *isl_map_deltas(__isl_take isl_map *map)
 {
 	int i;
-	isl_space *dim;
+	isl_space *space;
 	struct isl_set *result;
 
 	if (!map)
@@ -8532,9 +8523,9 @@ __isl_give isl_set *isl_map_deltas(__isl_take isl_map *map)
 	isl_assert(map->ctx, isl_space_tuple_is_equal(map->dim, isl_dim_in,
 						 map->dim, isl_dim_out),
 		   goto error);
-	dim = isl_map_get_space(map);
-	dim = isl_space_domain(dim);
-	result = isl_set_alloc_space(dim, map->n, 0);
+	space = isl_map_get_space(map);
+	space = isl_space_domain(space);
+	result = isl_set_alloc_space(space, map->n, 0);
 	if (!result)
 		goto error;
 	for (i = 0; i < map->n; ++i)
@@ -8628,16 +8619,16 @@ error:
 	return NULL;
 }
 
-__isl_give isl_map *isl_map_identity(__isl_take isl_space *dim)
+__isl_give isl_map *isl_map_identity(__isl_take isl_space *space)
 {
-	return isl_map_from_basic_map(isl_basic_map_identity(dim));
+	return isl_map_from_basic_map(isl_basic_map_identity(space));
 }
 
 __isl_give isl_map *isl_set_identity(__isl_take isl_set *set)
 {
-	isl_space *dim = isl_set_get_space(set);
+	isl_space *space = isl_set_get_space(set);
 	isl_map *id;
-	id = isl_map_identity(isl_space_map_from_set(dim));
+	id = isl_map_identity(isl_space_map_from_set(space));
 	return isl_map_intersect_range(id, set);
 }
 
@@ -9253,11 +9244,6 @@ __isl_give isl_basic_map *isl_basic_map_order_divs(
 		--i;
 	}
 	return bmap;
-}
-
-struct isl_basic_set *isl_basic_set_order_divs(struct isl_basic_set *bset)
-{
-	return bset_from_bmap(isl_basic_map_order_divs(bset_to_bmap(bset)));
 }
 
 __isl_give isl_map *isl_map_order_divs(__isl_take isl_map *map)
@@ -11664,7 +11650,7 @@ isl_bool isl_map_plain_is_single_valued(__isl_keep isl_map *map)
  */
 isl_bool isl_map_is_single_valued(__isl_keep isl_map *map)
 {
-	isl_space *dim;
+	isl_space *space;
 	isl_map *test;
 	isl_map *id;
 	isl_bool sv;
@@ -11676,8 +11662,8 @@ isl_bool isl_map_is_single_valued(__isl_keep isl_map *map)
 	test = isl_map_reverse(isl_map_copy(map));
 	test = isl_map_apply_range(test, isl_map_copy(map));
 
-	dim = isl_space_map_from_set(isl_space_range(isl_map_get_space(map)));
-	id = isl_map_identity(dim);
+	space = isl_space_map_from_set(isl_space_range(isl_map_get_space(map)));
+	id = isl_map_identity(space);
 
 	sv = isl_map_is_subset(test, id);
 
@@ -12725,12 +12711,12 @@ __isl_give isl_mat *isl_basic_set_inequalities_matrix(
 }
 
 __isl_give isl_basic_set *isl_basic_set_from_constraint_matrices(
-	__isl_take isl_space *dim,
+	__isl_take isl_space *space,
 	__isl_take isl_mat *eq, __isl_take isl_mat *ineq, enum isl_dim_type c1,
 	enum isl_dim_type c2, enum isl_dim_type c3, enum isl_dim_type c4)
 {
 	isl_basic_map *bmap;
-	bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+	bmap = isl_basic_map_from_constraint_matrices(space, eq, ineq,
 						   c1, c2, c3, c4, isl_dim_in);
 	return bset_from_bmap(bmap);
 }
