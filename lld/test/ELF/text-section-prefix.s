@@ -1,7 +1,4 @@
 # REQUIRES: x86
-## -z keep-text-section-prefix separates text sections with prefix .text.hot,
-## .text.unlikely, .text.startup, or .text.exit, in the absence of a SECTIONS command.
-
 # RUN: llvm-mc -filetype=obj -triple=x86_64 %s -o %t.o
 # RUN: ld.lld %t.o -o %t1
 # RUN: llvm-readelf -S %t1 | FileCheck --check-prefix=NOKEEP %s
@@ -20,18 +17,9 @@
 # NOKEEP:    [ 1] .text
 # NOKEEP-NOT:     .text
 
-## With a SECTIONS command, orphan sections are created verbatim.
-## No grouping is performed for them.
 # RUN: echo 'SECTIONS {}' > %t.lds
 # RUN: ld.lld -T %t.lds -z keep-text-section-prefix %t.o -o %t.script
-# RUN: llvm-readelf -S %t.script | FileCheck --check-prefix=SCRIPT %s
-
-# SCRIPT:      .text
-# SCRIPT-NEXT: .text.f
-# SCRIPT-NEXT: .text.hot.f_hot
-# SCRIPT-NEXT: .text.startup.f_startup
-# SCRIPT-NEXT: .text.exit.f_exit
-# SCRIPT-NEXT: .text.unlikely.f_unlikely
+# RUN: llvm-readelf -S %t.script | FileCheck --check-prefix=KEEP %s
 
 .globl _start
 _start:
