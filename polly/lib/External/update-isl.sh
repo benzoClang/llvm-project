@@ -18,6 +18,7 @@ if [ -n "$1" ]; then
 fi
 (cd $GITDIR && ./autogen.sh)
 mkdir -p $BUILDDIR
+export LD=ld.lld
 (cd $BUILDDIR && $GITDIR/configure --with-int=imath-32 --with-clang=system)
 echo "#define GIT_HEAD_ID \"\"" > $GITDIR/gitversion.h
 (cd $BUILDDIR && make -j dist)
