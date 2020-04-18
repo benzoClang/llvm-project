@@ -6,6 +6,9 @@
 /* Clang installation prefix */
 #undef CLANG_PREFIX
 
+/* Define to sysroot if needed */
+#undef CLANG_SYSROOT
+
 /* Define if CompilerInstance::createDiagnostics takes argc and argv */
 #undef CREATEDIAGNOSTICS_TAKES_ARG
 

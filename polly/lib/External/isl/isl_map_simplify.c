@@ -28,14 +28,14 @@
 #include <set_to_map.c>
 #include <set_from_map.c>
 
-static void swap_equality(struct isl_basic_map *bmap, int a, int b)
+static void swap_equality(__isl_keep isl_basic_map *bmap, int a, int b)
 {
 	isl_int *t = bmap->eq[a];
 	bmap->eq[a] = bmap->eq[b];
 	bmap->eq[b] = t;
 }
 
-static void swap_inequality(struct isl_basic_map *bmap, int a, int b)
+static void swap_inequality(__isl_keep isl_basic_map *bmap, int a, int b)
 {
 	if (a != b) {
 		isl_int *t = bmap->ineq[a];
@@ -894,7 +894,7 @@ out:
 	return bmap;
 }
 
-static int n_pure_div_eq(struct isl_basic_map *bmap)
+static int n_pure_div_eq(__isl_keep isl_basic_map *bmap)
 {
 	int i, j;
 	isl_size v_div;
@@ -1448,7 +1448,8 @@ __isl_give isl_basic_map *isl_basic_map_simplify(__isl_take isl_basic_map *bmap)
 	return bmap;
 }
 
-struct isl_basic_set *isl_basic_set_simplify(struct isl_basic_set *bset)
+__isl_give isl_basic_set *isl_basic_set_simplify(
+	__isl_take isl_basic_set *bset)
 {
 	return bset_from_bmap(isl_basic_map_simplify(bset_to_bmap(bset)));
 }
@@ -1489,13 +1490,6 @@ isl_bool isl_basic_map_is_div_constraint(__isl_keep isl_basic_map *bmap,
 
 	return isl_bool_true;
 }
-
-isl_bool isl_basic_set_is_div_constraint(__isl_keep isl_basic_set *bset,
-	isl_int *constraint, unsigned div)
-{
-	return isl_basic_map_is_div_constraint(bset, constraint, div);
-}
-
 
 /* If the only constraints a div d=floor(f/m)
  * appears in are its two defining constraints
@@ -1591,7 +1585,8 @@ __isl_give isl_basic_map *isl_basic_map_finalize(__isl_take isl_basic_map *bmap)
 	return bmap;
 }
 
-struct isl_basic_set *isl_basic_set_finalize(struct isl_basic_set *bset)
+__isl_give isl_basic_set *isl_basic_set_finalize(
+	__isl_take isl_basic_set *bset)
 {
 	return bset_from_bmap(isl_basic_map_finalize(bset_to_bmap(bset)));
 }
@@ -1718,8 +1713,8 @@ error:
 	return NULL;
 }
 
-struct isl_basic_set *isl_basic_set_eliminate_vars(
-	struct isl_basic_set *bset, unsigned pos, unsigned n)
+__isl_give isl_basic_set *isl_basic_set_eliminate_vars(
+	__isl_take isl_basic_set *bset, unsigned pos, unsigned n)
 {
 	return bset_from_bmap(isl_basic_map_eliminate_vars(bset_to_bmap(bset),
 								pos, n));
@@ -1775,7 +1770,7 @@ __isl_give isl_basic_set *isl_basic_set_eliminate(
  * Therefore, start over after calling
  * isl_basic_map_drop_constraints_involving_dims.
  */
-__isl_give isl_basic_map *isl_basic_map_drop_constraint_involving_unknown_divs(
+__isl_give isl_basic_map *isl_basic_map_drop_constraints_involving_unknown_divs(
 	__isl_take isl_basic_map *bmap)
 {
 	isl_bool known;
@@ -1811,13 +1806,26 @@ __isl_give isl_basic_map *isl_basic_map_drop_constraint_involving_unknown_divs(
 	return bmap;
 }
 
+/* Remove all constraints from "bset" that reference any unknown local
+ * variables (directly or indirectly).
+ */
+__isl_give isl_basic_set *isl_basic_set_drop_constraints_involving_unknown_divs(
+	__isl_take isl_basic_set *bset)
+{
+	isl_basic_map *bmap;
+
+	bmap = bset_to_bmap(bset);
+	bmap = isl_basic_map_drop_constraints_involving_unknown_divs(bmap);
+	return bset_from_bmap(bmap);
+}
+
 /* Remove all constraints from "map" that reference any unknown local
  * variables (directly or indirectly).
  *
  * Since constraints may get dropped from the basic maps,
  * they may no longer be disjoint from each other.
  */
-__isl_give isl_map *isl_map_drop_constraint_involving_unknown_divs(
+__isl_give isl_map *isl_map_drop_constraints_involving_unknown_divs(
 	__isl_take isl_map *map)
 {
 	int i;
@@ -1835,7 +1843,7 @@ __isl_give isl_map *isl_map_drop_constraint_involving_unknown_divs(
 
 	for (i = 0; i < map->n; ++i) {
 		map->p[i] =
-		    isl_basic_map_drop_constraint_involving_unknown_divs(
+		    isl_basic_map_drop_constraints_involving_unknown_divs(
 								    map->p[i]);
 		if (!map->p[i])
 			return isl_map_free(map);
@@ -2551,10 +2559,24 @@ static __isl_give isl_basic_set *uset_gist_uncompressed(
 	return uset_gist_full(bset, ineq, context);
 }
 
+/* Replace "bset" by an empty basic set in the same space.
+ */
+static __isl_give isl_basic_set *replace_by_empty(
+	__isl_take isl_basic_set *bset)
+{
+	isl_space *space;
+
+	space = isl_basic_set_get_space(bset);
+	isl_basic_set_free(bset);
+	return isl_basic_set_empty(space);
+}
+
 /* Remove all information from "bset" that is redundant in the context
  * of "context", for the case where the combined equalities of
  * "bset" and "context" allow for a compression that can be obtained
  * by preapplication of "T".
+ * If the compression of "context" is empty, meaning that "bset" and
+ * "context" do not intersect, then return the empty set.
  *
  * "bset" itself is not transformed by "T".  Instead, the inequalities
  * are extracted from "bset" and those are transformed by "T".
@@ -2598,7 +2620,7 @@ static __isl_give isl_basic_set *uset_gist_compressed(
 	if (isl_basic_set_plain_is_empty(context)) {
 		isl_mat_free(ineq);
 		isl_basic_set_free(context);
-		return isl_basic_set_set_to_empty(bset);
+		return replace_by_empty(bset);
 	}
 
 	ctx = isl_mat_get_ctx(ineq);
@@ -2677,6 +2699,8 @@ static __isl_give isl_basic_set *project_onto_involved(
  * compute the gist inside this intersection and then reduce
  * the constraints with respect to the equalities of the context
  * that only involve variables already involved in the input.
+ * If the intersection of the affine hulls turns out to be empty,
+ * then return the empty set.
  *
  * If two constraints are mutually redundant, then uset_gist_full
  * will remove the second of those constraints.  We therefore first
@@ -2726,7 +2750,7 @@ static __isl_give isl_basic_set *uset_gist(__isl_take isl_basic_set *bset,
 	if (T && T->n_col == 0) {
 		isl_mat_free(T);
 		isl_basic_set_free(context);
-		return isl_basic_set_set_to_empty(bset);
+		return replace_by_empty(bset);
 	}
 
 	aff_context = isl_basic_set_affine_hull(isl_basic_set_copy(context));
@@ -3609,8 +3633,8 @@ error:
 	return NULL;
 }
 
-struct isl_basic_set *isl_basic_set_gist(struct isl_basic_set *bset,
-						struct isl_basic_set *context)
+__isl_give isl_basic_set *isl_basic_set_gist(__isl_take isl_basic_set *bset,
+	__isl_take isl_basic_set *context)
 {
 	return bset_from_bmap(isl_basic_map_gist(bset_to_bmap(bset),
 						bset_to_bmap(context)));
@@ -4860,7 +4884,7 @@ static __isl_give isl_basic_map *isl_basic_map_drop_redundant_divs_ineq(
 	isl_size off;
 	int *pairs = NULL;
 	int n = 0;
-	int n_ineq;
+	isl_size n_ineq;
 
 	if (!bmap)
 		goto error;
@@ -4875,6 +4899,8 @@ static __isl_give isl_basic_map *isl_basic_map_drop_redundant_divs_ineq(
 		goto error;
 
 	n_ineq = isl_basic_map_n_inequality(bmap);
+	if (n_ineq < 0)
+		goto error;
 	for (i = 0; i < bmap->n_div; ++i) {
 		int pos, neg;
 		int last_pos, last_neg;

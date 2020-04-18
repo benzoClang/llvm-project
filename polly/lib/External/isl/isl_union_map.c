@@ -468,15 +468,15 @@ __isl_give isl_union_set *isl_union_set_add_set(__isl_take isl_union_set *uset,
 
 __isl_give isl_union_map *isl_union_map_from_map(__isl_take isl_map *map)
 {
-	isl_space *dim;
+	isl_space *space;
 	isl_union_map *umap;
 
 	if (!map)
 		return NULL;
 
-	dim = isl_map_get_space(map);
-	dim = isl_space_params(dim);
-	umap = isl_union_map_empty(dim);
+	space = isl_map_get_space(map);
+	space = isl_space_params(space);
+	umap = isl_union_map_empty(space);
 	umap = isl_union_map_add_map(umap, map);
 
 	return umap;
@@ -2765,7 +2765,7 @@ isl_bool isl_union_set_is_empty(__isl_keep isl_union_set *uset)
 static isl_bool is_subset_of_identity(__isl_keep isl_map *map)
 {
 	isl_bool is_subset;
-	isl_space *dim;
+	isl_space *space;
 	isl_map *id;
 
 	if (!map)
@@ -2775,8 +2775,8 @@ static isl_bool is_subset_of_identity(__isl_keep isl_map *map)
 					map->dim, isl_dim_out))
 		return isl_bool_false;
 
-	dim = isl_map_get_space(map);
-	id = isl_map_identity(dim);
+	space = isl_map_get_space(map);
+	id = isl_map_identity(space);
 
 	is_subset = isl_map_is_subset(map, id);
 
@@ -3076,7 +3076,7 @@ static isl_bool plain_injective_on_range(__isl_take isl_union_map *umap,
  * based on later dimensions.
  */
 static int separates(struct isl_fixed_map *v, int n,
-	__isl_take isl_space *dim, int pos, int n_range)
+	__isl_take isl_space *space, int pos, int n_range)
 {
 	int i;
 
@@ -3097,7 +3097,7 @@ static int separates(struct isl_fixed_map *v, int n,
 		if (j == i + 1)
 			continue;
 
-		part = isl_union_map_alloc(isl_space_copy(dim), j - i);
+		part = isl_union_map_alloc(isl_space_copy(space), j - i);
 		for (k = i; k < j; ++k)
 			part = isl_union_map_add_map(part,
 						     isl_map_copy(v[k].map));
@@ -3111,11 +3111,11 @@ static int separates(struct isl_fixed_map *v, int n,
 		i = j - 1;
 	}
 
-	isl_space_free(dim);
+	isl_space_free(space);
 	free_isl_fixed_map_array(v, n);
 	return i + 1 >= n;
 error:
-	isl_space_free(dim);
+	isl_space_free(space);
 	free_isl_fixed_map_array(v, n);
 	return -1;
 }
@@ -3156,7 +3156,7 @@ static isl_bool plain_injective_on_range(__isl_take isl_union_map *umap,
 	for (data.pos = first; data.pos < n_range; ++data.pos) {
 		isl_bool fixed;
 		int injective;
-		isl_space *dim;
+		isl_space *space;
 
 		data.n = 0;
 		fixed = union_map_forall_user(umap, &fixed_at_pos, &data);
@@ -3164,8 +3164,8 @@ static isl_bool plain_injective_on_range(__isl_take isl_union_map *umap,
 			goto error;
 		if (!fixed)
 			continue;
-		dim = isl_union_map_get_space(umap);
-		injective = separates(data.v, n, dim, data.pos, n_range);
+		space = isl_union_map_get_space(umap);
+		injective = separates(data.v, n, space, data.pos, n_range);
 		isl_union_map_free(umap);
 		return injective;
 	}
@@ -3316,15 +3316,15 @@ __isl_give isl_union_set *isl_union_set_coefficients(
 	__isl_take isl_union_set *uset)
 {
 	isl_ctx *ctx;
-	isl_space *dim;
+	isl_space *space;
 	isl_union_set *res;
 
 	if (!uset)
 		return NULL;
 
 	ctx = isl_union_set_get_ctx(uset);
-	dim = isl_space_set_alloc(ctx, 0, 0);
-	res = isl_union_map_alloc(dim, uset->table.n);
+	space = isl_space_set_alloc(ctx, 0, 0);
+	res = isl_union_map_alloc(space, uset->table.n);
 	if (isl_hash_table_foreach(uset->dim->ctx, &uset->table,
 				   &coefficients_entry, &res) < 0)
 		goto error;
