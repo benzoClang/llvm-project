@@ -468,15 +468,15 @@ __isl_give isl_union_set *isl_union_set_add_set(__isl_take isl_union_set *uset,
 
 __isl_give isl_union_map *isl_union_map_from_map(__isl_take isl_map *map)
 {
-	isl_space *dim;
+	isl_space *space;
 	isl_union_map *umap;
 
 	if (!map)
 		return NULL;
 
-	dim = isl_map_get_space(map);
-	dim = isl_space_params(dim);
-	umap = isl_union_map_empty(dim);
+	space = isl_map_get_space(map);
+	space = isl_space_params(space);
+	umap = isl_union_map_empty(space);
 	umap = isl_union_map_add_map(umap, map);
 
 	return umap;
@@ -1486,10 +1486,13 @@ static isl_stat apply_range_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
-	isl_bool empty;
+	isl_bool empty, match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_out,
-				 map2->dim, isl_dim_in))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_out,
+				map2, isl_dim_in);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_apply_range(isl_map_copy(data->map), isl_map_copy(map2));
@@ -1575,9 +1578,13 @@ static isl_stat map_lex_lt_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
+	isl_bool match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_out,
-				 map2->dim, isl_dim_out))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_out,
+				 map2, isl_dim_out);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_lex_lt_map(isl_map_copy(data->map), isl_map_copy(map2));
@@ -1597,9 +1604,13 @@ static isl_stat map_lex_le_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
+	isl_bool match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_out,
-				 map2->dim, isl_dim_out))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_out,
+				 map2, isl_dim_out);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_lex_le_map(isl_map_copy(data->map), isl_map_copy(map2));
@@ -1655,9 +1666,13 @@ static isl_stat domain_product_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
+	isl_bool match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_out,
-				 map2->dim, isl_dim_out))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_out,
+				 map2, isl_dim_out);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_domain_product(isl_map_copy(data->map),
@@ -1680,9 +1695,12 @@ static isl_stat range_product_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
+	isl_bool match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_in,
-				 map2->dim, isl_dim_in))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_in, map2, isl_dim_in);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_range_product(isl_map_copy(data->map),
@@ -1706,9 +1724,13 @@ static isl_stat flat_domain_product_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
+	isl_bool match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_out,
-				 map2->dim, isl_dim_out))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_out,
+				 map2, isl_dim_out);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_flat_domain_product(isl_map_copy(data->map),
@@ -1731,9 +1753,12 @@ static isl_stat flat_range_product_entry(void **entry, void *user)
 {
 	struct isl_union_map_bin_data *data = user;
 	isl_map *map2 = *entry;
+	isl_bool match;
 
-	if (!isl_space_tuple_is_equal(data->map->dim, isl_dim_in,
-				 map2->dim, isl_dim_in))
+	match = isl_map_tuple_is_equal(data->map, isl_dim_in, map2, isl_dim_in);
+	if (match < 0)
+		return isl_stat_error;
+	if (!match)
 		return isl_stat_ok;
 
 	map2 = isl_map_flat_range_product(isl_map_copy(data->map),
@@ -2261,8 +2286,7 @@ __isl_give isl_union_map *isl_union_set_wrapped_domain_map(
  */
 static isl_bool equal_tuples(__isl_keep isl_map *map, void *user)
 {
-	return isl_space_tuple_is_equal(map->dim, isl_dim_in,
-					map->dim, isl_dim_out);
+	return isl_map_tuple_is_equal(map, isl_dim_in, map, isl_dim_out);
 }
 
 __isl_give isl_union_set *isl_union_map_deltas(__isl_take isl_union_map *umap)
@@ -2765,18 +2789,18 @@ isl_bool isl_union_set_is_empty(__isl_keep isl_union_set *uset)
 static isl_bool is_subset_of_identity(__isl_keep isl_map *map)
 {
 	isl_bool is_subset;
-	isl_space *dim;
+	isl_space *space;
 	isl_map *id;
+	isl_bool match;
 
-	if (!map)
+	match = isl_map_tuple_is_equal(map, isl_dim_in, map, isl_dim_out);
+	if (match < 0)
 		return isl_bool_error;
-
-	if (!isl_space_tuple_is_equal(map->dim, isl_dim_in,
-					map->dim, isl_dim_out))
+	if (!match)
 		return isl_bool_false;
 
-	dim = isl_map_get_space(map);
-	id = isl_map_identity(dim);
+	space = isl_map_get_space(map);
+	id = isl_map_identity(space);
 
 	is_subset = isl_map_is_subset(map, id);
 
@@ -2916,15 +2940,12 @@ static isl_stat map_plain_is_not_identity(__isl_take isl_map *map, void *user)
 {
 	isl_bool *non_identity = user;
 	isl_bool equal;
-	isl_space *space;
 
-	space = isl_map_get_space(map);
-	equal = isl_space_tuple_is_equal(space, isl_dim_in, space, isl_dim_out);
+	equal = isl_map_tuple_is_equal(map, isl_dim_in, map, isl_dim_out);
 	if (equal >= 0 && !equal)
 		*non_identity = isl_bool_not(isl_map_is_empty(map));
 	else
 		*non_identity = isl_bool_not(equal);
-	isl_space_free(space);
 	isl_map_free(map);
 
 	if (*non_identity < 0 || *non_identity)
@@ -3076,7 +3097,7 @@ static isl_bool plain_injective_on_range(__isl_take isl_union_map *umap,
  * based on later dimensions.
  */
 static int separates(struct isl_fixed_map *v, int n,
-	__isl_take isl_space *dim, int pos, int n_range)
+	__isl_take isl_space *space, int pos, int n_range)
 {
 	int i;
 
@@ -3097,7 +3118,7 @@ static int separates(struct isl_fixed_map *v, int n,
 		if (j == i + 1)
 			continue;
 
-		part = isl_union_map_alloc(isl_space_copy(dim), j - i);
+		part = isl_union_map_alloc(isl_space_copy(space), j - i);
 		for (k = i; k < j; ++k)
 			part = isl_union_map_add_map(part,
 						     isl_map_copy(v[k].map));
@@ -3111,11 +3132,11 @@ static int separates(struct isl_fixed_map *v, int n,
 		i = j - 1;
 	}
 
-	isl_space_free(dim);
+	isl_space_free(space);
 	free_isl_fixed_map_array(v, n);
 	return i + 1 >= n;
 error:
-	isl_space_free(dim);
+	isl_space_free(space);
 	free_isl_fixed_map_array(v, n);
 	return -1;
 }
@@ -3156,7 +3177,7 @@ static isl_bool plain_injective_on_range(__isl_take isl_union_map *umap,
 	for (data.pos = first; data.pos < n_range; ++data.pos) {
 		isl_bool fixed;
 		int injective;
-		isl_space *dim;
+		isl_space *space;
 
 		data.n = 0;
 		fixed = union_map_forall_user(umap, &fixed_at_pos, &data);
@@ -3164,8 +3185,8 @@ static isl_bool plain_injective_on_range(__isl_take isl_union_map *umap,
 			goto error;
 		if (!fixed)
 			continue;
-		dim = isl_union_map_get_space(umap);
-		injective = separates(data.v, n, dim, data.pos, n_range);
+		space = isl_union_map_get_space(umap);
+		injective = separates(data.v, n, space, data.pos, n_range);
 		isl_union_map_free(umap);
 		return injective;
 	}
@@ -3316,15 +3337,15 @@ __isl_give isl_union_set *isl_union_set_coefficients(
 	__isl_take isl_union_set *uset)
 {
 	isl_ctx *ctx;
-	isl_space *dim;
+	isl_space *space;
 	isl_union_set *res;
 
 	if (!uset)
 		return NULL;
 
 	ctx = isl_union_set_get_ctx(uset);
-	dim = isl_space_set_alloc(ctx, 0, 0);
-	res = isl_union_map_alloc(dim, uset->table.n);
+	space = isl_space_set_alloc(ctx, 0, 0);
+	res = isl_union_map_alloc(space, uset->table.n);
 	if (isl_hash_table_foreach(uset->dim->ctx, &uset->table,
 				   &coefficients_entry, &res) < 0)
 		goto error;
@@ -3385,7 +3406,7 @@ error:
  */
 static int domain_match(__isl_keep isl_map *map, __isl_keep isl_space *space)
 {
-	return isl_space_tuple_is_equal(map->dim, isl_dim_in,
+	return isl_map_space_tuple_is_equal(map, isl_dim_in,
 					space, isl_dim_out);
 }
 
@@ -3393,7 +3414,7 @@ static int domain_match(__isl_keep isl_map *map, __isl_keep isl_space *space)
  */
 static int range_match(__isl_keep isl_map *map, __isl_keep isl_space *space)
 {
-	return isl_space_tuple_is_equal(map->dim, isl_dim_out,
+	return isl_map_space_tuple_is_equal(map, isl_dim_out,
 					space, isl_dim_out);
 }
 
@@ -3401,7 +3422,7 @@ static int range_match(__isl_keep isl_map *map, __isl_keep isl_space *space)
  */
 static int set_match(__isl_keep isl_map *map, __isl_keep isl_space *space)
 {
-	return isl_space_tuple_is_equal(map->dim, isl_dim_set,
+	return isl_map_space_tuple_is_equal(map, isl_dim_set,
 					space, isl_dim_out);
 }
 

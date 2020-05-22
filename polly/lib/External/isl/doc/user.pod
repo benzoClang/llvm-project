@@ -2708,6 +2708,8 @@ that is equal to a given value, parameter or
 a specified dimension on a given domain can be created using
 
 	#include <isl/aff.h>
+	__isl_give isl_aff *isl_aff_zero_on_domain_space(
+		__isl_take isl_space *space);
 	__isl_give isl_aff *isl_aff_zero_on_domain(
 		__isl_take isl_local_space *ls);
 	__isl_give isl_aff *isl_aff_val_on_domain_space(
@@ -3240,6 +3242,26 @@ The base expression can be replaced using the following functions.
 
 C<isl_multi_id_set_id> is an alternative name for C<isl_multi_id_set_at>.
 Similarly for the other pairs of functions.
+
+A list of all base expressions of a multiple
+expression can be extracted using the following functions.
+
+	#include <isl/id.h>
+	__isl_give isl_id_list *isl_multi_id_get_list(
+		__isl_keep isl_multi_id *mi);
+
+	#include <isl/val.h>
+	__isl_give isl_val_list *isl_multi_val_get_list(
+		__isl_keep isl_multi_val *mv);
+
+	#include <isl/aff.h>
+	__isl_give isl_aff_list *isl_multi_aff_get_list(
+		__isl_keep isl_multi_aff *multi);
+	__isl_give isl_pw_aff_list *isl_multi_pw_aff_get_list(
+		__isl_keep isl_multi_pw_aff *mpa);
+	__isl_give isl_union_pw_aff_list *
+	isl_multi_union_pw_aff_list(
+		__isl_keep isl_multi_union_pw_aff *mupa);
 
 The constant terms of the base expressions can be obtained using
 the following function.
@@ -4264,6 +4286,10 @@ is already known to be empty.
 		__isl_keep isl_union_map *umap);
 	isl_bool isl_union_map_is_empty(
 		__isl_keep isl_union_map *umap);
+
+	#include <isl/aff.h>
+	isl_bool isl_union_pw_multi_aff_plain_is_empty(
+		__isl_keep isl_union_pw_multi_aff *upma);
 
 =item * Universality
 
@@ -7484,7 +7510,13 @@ C<isl_pw_aff> function to each pair of elements in the two lists.
 	__isl_give isl_map *isl_multi_pw_aff_eq_map(
 		__isl_take isl_multi_pw_aff *mpa1,
 		__isl_take isl_multi_pw_aff *mpa2);
+	__isl_give isl_map *isl_multi_pw_aff_lex_le_map(
+		__isl_take isl_multi_pw_aff *mpa1,
+		__isl_take isl_multi_pw_aff *mpa2);
 	__isl_give isl_map *isl_multi_pw_aff_lex_lt_map(
+		__isl_take isl_multi_pw_aff *mpa1,
+		__isl_take isl_multi_pw_aff *mpa2);
+	__isl_give isl_map *isl_multi_pw_aff_lex_ge_map(
 		__isl_take isl_multi_pw_aff *mpa1,
 		__isl_take isl_multi_pw_aff *mpa2);
 	__isl_give isl_map *isl_multi_pw_aff_lex_gt_map(
@@ -7493,6 +7525,23 @@ C<isl_pw_aff> function to each pair of elements in the two lists.
 
 These functions return a map between domain elements of the arguments
 where the function values satisfy the given relation.
+
+	#include <isl/map.h>
+	__isl_give isl_map *isl_map_eq_at_multi_pw_aff(
+		__isl_take isl_map *map,
+		__isl_take isl_multi_pw_aff *mpa);
+	__isl_give isl_map *isl_map_lex_lt_at_multi_pw_aff(
+		__isl_take isl_map *map,
+		__isl_take isl_multi_pw_aff *mpa);
+	__isl_give isl_map *isl_map_lex_le_at_multi_pw_aff(
+		__isl_take isl_map *map,
+		__isl_take isl_multi_pw_aff *mpa);
+	__isl_give isl_map *isl_map_lex_gt_at_multi_pw_aff(
+		__isl_take isl_map *map,
+		__isl_take isl_multi_pw_aff *mpa);
+	__isl_give isl_map *isl_map_lex_ge_at_multi_pw_aff(
+		__isl_take isl_map *map,
+		__isl_take isl_multi_pw_aff *mpa);
 
 	#include <isl/union_map.h>
 	__isl_give isl_union_map *
@@ -8034,6 +8083,12 @@ in the two arguments.
 	__isl_give isl_multi_val *isl_multi_val_sub(
 		__isl_take isl_multi_val *mv1,
 		__isl_take isl_multi_val *mv2);
+	__isl_give isl_multi_val *isl_multi_val_min(
+		__isl_take isl_multi_val *mv1,
+		__isl_take isl_multi_val *mv2);
+	__isl_give isl_multi_val *isl_multi_val_max(
+		__isl_take isl_multi_val *mv1,
+		__isl_take isl_multi_val *mv2);
 
 	#include <isl/aff.h>
 	__isl_give isl_aff *isl_aff_add(
@@ -8094,6 +8149,12 @@ in the two arguments.
 	__isl_give isl_pw_aff *isl_pw_aff_max(
 		__isl_take isl_pw_aff *pwaff1,
 		__isl_take isl_pw_aff *pwaff2);
+	__isl_give isl_multi_pw_aff *isl_multi_pw_aff_min(
+		__isl_take isl_multi_pw_aff *mpa1,
+		__isl_take isl_multi_pw_aff *mpa2);
+	__isl_give isl_multi_pw_aff *isl_multi_pw_aff_max(
+		__isl_take isl_multi_pw_aff *mpa1,
+		__isl_take isl_multi_pw_aff *mpa2);
 	__isl_give isl_aff *isl_aff_sub(
 		__isl_take isl_aff *aff1,
 		__isl_take isl_aff *aff2);
@@ -8159,6 +8220,9 @@ C<isl_aff_sub> subtracts the second argument from the first.
 	__isl_give isl_pw_aff *isl_pw_aff_union_add(
 		__isl_take isl_pw_aff *pwaff1,
 		__isl_take isl_pw_aff *pwaff2);
+	__isl_give isl_multi_pw_aff *isl_multi_pw_aff_union_add(
+		__isl_take isl_multi_pw_aff *mpa1,
+		__isl_take isl_multi_pw_aff *mpa2);
 	__isl_give isl_pw_multi_aff *isl_pw_multi_aff_union_add(
 		__isl_take isl_pw_multi_aff *pma1,
 		__isl_take isl_pw_multi_aff *pma2);
@@ -11329,7 +11393,8 @@ while printing the AST.
 	const char *isl_options_get_ast_iterator_type(
 		isl_ctx *ctx);
 
-The AST printer only prints body nodes as blocks if these
+The AST printer only prints body nodes of C<if> and C<for> nodes
+as blocks if these
 blocks cannot be safely omitted.
 For example, a C<for> node with one body node will not be
 surrounded with braces in C<ISL_FORMAT_C>.
@@ -11338,6 +11403,15 @@ A block will always be printed by setting the following option.
 	isl_stat isl_options_set_ast_always_print_block(isl_ctx *ctx,
 		int val);
 	int isl_options_get_ast_always_print_block(isl_ctx *ctx);
+
+Explicit block nodes that appear inside the AST are always printed as blocks.
+If the block node appears as the outermost node,
+then it is only printed if the following option is set.
+
+	isl_stat isl_options_set_ast_print_outermost_block(
+		isl_ctx *ctx, int val);
+	int isl_options_get_ast_print_outermost_block(
+		isl_ctx *ctx);
 
 =head3 Options
 
