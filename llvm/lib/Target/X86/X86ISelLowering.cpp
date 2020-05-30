@@ -1079,8 +1079,6 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
       setOperationAction(ISD::STRICT_FRINT,      RoundedTy,  Legal);
       setOperationAction(ISD::FNEARBYINT,        RoundedTy,  Legal);
       setOperationAction(ISD::STRICT_FNEARBYINT, RoundedTy,  Legal);
-
-      setOperationAction(ISD::FROUND,            RoundedTy,  Custom);
     }
 
     setOperationAction(ISD::SMAX,               MVT::v16i8, Legal);
@@ -1173,9 +1171,6 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
       setOperationAction(ISD::STRICT_FRINT,      VT, Legal);
       setOperationAction(ISD::FNEARBYINT,        VT, Legal);
       setOperationAction(ISD::STRICT_FNEARBYINT, VT, Legal);
-
-      setOperationAction(ISD::FROUND,            VT, Custom);
-
       setOperationAction(ISD::FNEG,              VT, Custom);
       setOperationAction(ISD::FABS,              VT, Custom);
       setOperationAction(ISD::FCOPYSIGN,         VT, Custom);
@@ -1558,8 +1553,6 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
       setOperationAction(ISD::STRICT_FRINT,      VT, Legal);
       setOperationAction(ISD::FNEARBYINT,        VT, Legal);
       setOperationAction(ISD::STRICT_FNEARBYINT, VT, Legal);
-
-      setOperationAction(ISD::FROUND,            VT, Custom);
     }
 
     for (auto VT : {MVT::v32i16, MVT::v16i32, MVT::v8i64}) {
@@ -21092,30 +21085,6 @@ SDValue X86TargetLowering::lowerFaddFsub(SDValue Op, SelectionDAG &DAG) const {
   return lowerAddSubToHorizontalOp(Op, DAG, Subtarget);
 }
 
-/// ISD::FROUND is defined to round to nearest with ties rounding away from 0.
-/// This mode isn't supported in hardware on X86. But as long as we aren't
-/// compiling with trapping math, we can emulate this with
-/// floor(X + copysign(nextafter(0.5, 0.0), X)).
-static SDValue LowerFROUND(SDValue Op, SelectionDAG &DAG) {
-  SDValue N0 = Op.getOperand(0);
-  SDLoc dl(Op);
-  MVT VT = Op.getSimpleValueType();
-
-  // N0 += copysign(nextafter(0.5, 0.0), N0)
-  const fltSemantics &Sem = SelectionDAG::EVTToAPFloatSemantics(VT);
-  bool Ignored;
-  APFloat Point5Pred = APFloat(0.5f);
-  Point5Pred.convert(Sem, APFloat::rmNearestTiesToEven, &Ignored);
-  Point5Pred.next(/*nextDown*/true);
-
-  SDValue Adder = DAG.getNode(ISD::FCOPYSIGN, dl, VT,
-                              DAG.getConstantFP(Point5Pred, dl, VT), N0);
-  N0 = DAG.getNode(ISD::FADD, dl, VT, N0, Adder);
-
-  // Truncate the result to remove fraction.
-  return DAG.getNode(ISD::FTRUNC, dl, VT, N0);
-}
-
 /// The only differences between FABS and FNEG are the mask and the logic op.
 /// FNEG also has a folding opportunity for FNEG(FABS(x)).
 static SDValue LowerFABSorFNEG(SDValue Op, SelectionDAG &DAG) {
@@ -29066,7 +29035,6 @@ SDValue X86TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::STORE:              return LowerStore(Op, Subtarget, DAG);
   case ISD::FADD:
   case ISD::FSUB:               return lowerFaddFsub(Op, DAG);
-  case ISD::FROUND:             return LowerFROUND(Op, DAG);
   case ISD::FABS:
   case ISD::FNEG:               return LowerFABSorFNEG(Op, DAG);
   case ISD::FCOPYSIGN:          return LowerFCOPYSIGN(Op, DAG);
