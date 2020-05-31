@@ -209,7 +209,7 @@ struct isl_coalesce_info {
  */
 static int any_eq(struct isl_coalesce_info *info, int status)
 {
-	unsigned n_eq;
+	isl_size n_eq;
 
 	n_eq = isl_basic_map_n_equality(info->bmap);
 	return any(info->eq, 2 * n_eq, status);
@@ -221,7 +221,7 @@ static int any_eq(struct isl_coalesce_info *info, int status)
  */
 static int any_ineq(struct isl_coalesce_info *info, int status)
 {
-	unsigned n_ineq;
+	isl_size n_ineq;
 
 	n_ineq = isl_basic_map_n_inequality(info->bmap);
 	return any(info->ineq, n_ineq, status);
@@ -236,7 +236,7 @@ static int any_ineq(struct isl_coalesce_info *info, int status)
  */
 static int find_eq(struct isl_coalesce_info *info, int status)
 {
-	unsigned n_eq;
+	isl_size n_eq;
 
 	n_eq = isl_basic_map_n_equality(info->bmap);
 	return find(info->eq, 2 * n_eq, status);
@@ -249,7 +249,7 @@ static int find_eq(struct isl_coalesce_info *info, int status)
  */
 static int find_ineq(struct isl_coalesce_info *info, int status)
 {
-	unsigned n_ineq;
+	isl_size n_ineq;
 
 	n_ineq = isl_basic_map_n_inequality(info->bmap);
 	return find(info->ineq, n_ineq, status);
@@ -261,7 +261,7 @@ static int find_ineq(struct isl_coalesce_info *info, int status)
  */
 static int count_eq(struct isl_coalesce_info *info, int status)
 {
-	unsigned n_eq;
+	isl_size n_eq;
 
 	n_eq = isl_basic_map_n_equality(info->bmap);
 	return count(info->eq, 2 * n_eq, status);
@@ -273,7 +273,7 @@ static int count_eq(struct isl_coalesce_info *info, int status)
  */
 static int count_ineq(struct isl_coalesce_info *info, int status)
 {
-	unsigned n_ineq;
+	isl_size n_ineq;
 
 	n_ineq = isl_basic_map_n_inequality(info->bmap);
 	return count(info->ineq, n_ineq, status);
@@ -500,6 +500,11 @@ static int number_of_constraints_increases(int i, int j,
  * the same as that of the other basic map.  Otherwise, we mark
  * the integer division as unknown and simplify the basic map
  * in an attempt to recover the integer division definition.
+ * If any extra constraints get introduced, then these may
+ * involve integer divisions with a unit coefficient.
+ * Eliminate those that do not appear with any other coefficient
+ * in other constraints, to ensure they get eliminated completely,
+ * improving the chances of further coalescing.
  */
 static enum isl_change fuse(int i, int j, struct isl_coalesce_info *info,
 	__isl_keep isl_mat *extra, int detect_equalities, int check_number)
@@ -556,6 +561,8 @@ static enum isl_change fuse(int i, int j, struct isl_coalesce_info *info,
 	if (simplify || info[j].simplify) {
 		fused = isl_basic_map_simplify(fused);
 		info[i].simplify = 0;
+	} else if (extra_rows > 0) {
+		fused = isl_basic_map_eliminate_pure_unit_divs(fused);
 	}
 	fused = isl_basic_map_finalize(fused);
 
@@ -1470,7 +1477,7 @@ static __isl_give isl_set *set_from_updated_bmap(__isl_keep isl_basic_map *bmap,
 static isl_bool has_redundant_cuts(struct isl_coalesce_info *info)
 {
 	int l;
-	int n_eq, n_ineq;
+	isl_size n_eq, n_ineq;
 
 	n_eq = isl_basic_map_n_equality(info->bmap);
 	n_ineq = isl_basic_map_n_inequality(info->bmap);
@@ -4069,7 +4076,7 @@ error:
  * can be represented by a single basic set.
  * If so, replace the pair by the single basic set and start over.
  */
-struct isl_set *isl_set_coalesce(struct isl_set *set)
+__isl_give isl_set *isl_set_coalesce(__isl_take isl_set *set)
 {
 	return set_from_map(isl_map_coalesce(set_to_map(set)));
 }
