@@ -453,6 +453,7 @@ DISTCLEANFILES = \
 EXTRA_DIST = \
 	LICENSE \
 	isl_config_post.h \
+	isl_aff_lex_templ.c \
 	isl_align_params_templ.c \
 	isl_align_params_bin_templ.c \
 	basis_reduction_templ.c \
@@ -466,6 +467,7 @@ EXTRA_DIST = \
 	isl_domain_factor_templ.c \
 	extract_key.c \
 	has_single_reference_templ.c \
+	isl_insert_domain_templ.c \
 	isl_list_macro.h \
 	isl_list_templ.c \
 	isl_list_templ.h \
@@ -500,9 +502,11 @@ EXTRA_DIST = \
 	isl_multi_from_base_templ.c \
 	isl_multi_gist.c \
 	isl_multi_hash.c \
+	isl_multi_insert_domain_templ.c \
 	isl_multi_intersect.c \
 	isl_multi_identity_templ.c \
 	isl_multi_locals_templ.c \
+	isl_multi_min_max_templ.c \
 	isl_multi_move_dims_templ.c \
 	isl_multi_nan_templ.c \
 	isl_multi_param_templ.c \
@@ -510,6 +514,8 @@ EXTRA_DIST = \
 	isl_multi_read_no_explicit_domain_templ.c \
 	isl_multi_splice_templ.c \
 	isl_multi_tuple_id_templ.c \
+	isl_multi_unbind_params_templ.c \
+	isl_multi_union_add_templ.c \
 	isl_multi_zero_templ.c \
 	opt_type.h \
 	print_templ.c \
@@ -527,7 +533,9 @@ EXTRA_DIST = \
 	isl_pw_eval.c \
 	isl_pw_hash.c \
 	isl_pw_insert_dims_templ.c \
+	isl_pw_insert_domain_templ.c \
 	isl_pw_lift_templ.c \
+	isl_pw_locals_templ.c \
 	isl_pw_morph_templ.c \
 	isl_pw_move_dims_templ.c \
 	isl_pw_neg_templ.c \
@@ -545,6 +553,7 @@ EXTRA_DIST = \
 	isl_type_check_equal_space_templ.c \
 	isl_type_has_equal_space_bin_templ.c \
 	isl_type_has_equal_space_templ.c \
+	isl_unbind_params_templ.c \
 	uset_to_umap.c \
 	uset_from_umap.c \
 	isl_union_macro.h \
@@ -552,6 +561,7 @@ EXTRA_DIST = \
 	isl_union_single.c \
 	isl_union_multi.c \
 	isl_union_eval.c \
+	isl_union_locals_templ.c \
 	isl_union_neg.c \
 	libisl-gdb.py \
 	doc/CodingStyle \
