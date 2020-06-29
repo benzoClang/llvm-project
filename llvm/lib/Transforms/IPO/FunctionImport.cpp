@@ -24,6 +24,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalAlias.h"
+#include "llvm/IR/GlobalIFunc.h"
 #include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
@@ -191,6 +192,10 @@ selectCallee(const ModuleSummaryIndex &Index,
         if (GlobalValue::isInterposableLinkage(GVSummary->linkage())) {
           Reason = FunctionImporter::ImportFailureReason::InterposableLinkage;
           // There is no point in importing these, we can't inline them
+          return false;
+        }
+
+        if (GVSummary->getSummaryKind() == GlobalValueSummary::IfuncKind) {
           return false;
         }
 
@@ -886,7 +891,7 @@ void llvm::computeDeadSymbolsAndUpdateIndirectCalls(
   }
 
   // Make value live and add it to the worklist if it was not live before.
-  auto visit = [&](ValueInfo VI, bool IsAliasee) {
+  auto visit = [&](ValueInfo VI, bool IsAliaseeOrResolver) {
     // FIXME: If we knew which edges were created for indirect call profiles,
     // we could skip them here. Any that are live should be reached via
     // other edges, e.g. reference edges. Otherwise, using a profile collected
@@ -919,7 +924,7 @@ void llvm::computeDeadSymbolsAndUpdateIndirectCalls(
           Interposable = true;
       }
 
-      if (!IsAliasee) {
+      if (!IsAliaseeOrResolver) {
         if (!KeepAliveLinkage)
           return;
 
@@ -939,13 +944,14 @@ void llvm::computeDeadSymbolsAndUpdateIndirectCalls(
   while (!Worklist.empty()) {
     auto VI = Worklist.pop_back_val();
     for (auto &Summary : VI.getSummaryList()) {
-      if (auto *AS = dyn_cast<AliasSummary>(Summary.get())) {
-        // If this is an alias, visit the aliasee VI to ensure that all copies
-        // are marked live and it is added to the worklist for further
-        // processing of its references.
-        visit(AS->getAliaseeVI(), true);
+      if (auto *GIV = dyn_cast<GlobalIndirectValueSummary>(Summary.get())) {
+        // If this is an alias or ifunc, visit the aliasee / resolver VI to
+        // ensure that all copies are marked live and it is added to the
+        // worklist for further processing of its references.
+        visit(GIV->getIndirectSymbolVI(), true);
         continue;
       }
+
       for (auto Ref : Summary->refs())
         visit(Ref, false);
       if (auto *FS = dyn_cast<FunctionSummary>(Summary.get()))

@@ -338,12 +338,17 @@ static void computeFunctionSummary(
         // Stripping pointer casts can reveal a called function.
         CalledFunction = dyn_cast<Function>(CalledValue);
       }
-      // Check if this is an alias to a function. If so, get the
-      // called aliasee for the checks below.
+      // Check if this is an alias to a function or ifunc.
+      // If so, get the called aliasee or resolver for the checks below.
       if (auto *GA = dyn_cast<GlobalAlias>(CalledValue)) {
         assert(!CalledFunction && "Expected null called function in callsite for alias");
         CalledFunction = dyn_cast<Function>(GA->getAliaseeObject());
+      } else if (auto *GI = dyn_cast<GlobalIFunc>(CalledValue)) {
+        assert(!CalledFunction &&
+               "Expected null called function in callsite for ifunc");
+        CalledFunction = GI->getResolverFunction();
       }
+
       // Check if this is a direct call to a known function or a known
       // intrinsic, or an indirect call with profile data.
       if (CalledFunction) {
@@ -361,10 +366,10 @@ static void computeFunctionSummary(
         if (ForceSummaryEdgesCold != FunctionSummary::FSHT_None)
           Hotness = CalleeInfo::HotnessType::Cold;
 
-        // Use the original CalledValue, in case it was an alias. We want
-        // to record the call edge to the alias in that case. Eventually
-        // an alias summary will be created to associate the alias and
-        // aliasee.
+        // Use the original CalledValue, in case it was an alias or ifunc.
+        // We want to record the call edge to the aliasee or resolver in that
+        // case. Eventually an indirect value summary will be created to
+        // associate the alias and aliasee or ifunc and its resolver.
         auto &ValueInfo = CallGraphEdges[Index.getOrInsertValueInfo(
             cast<GlobalValue>(CalledValue))];
         ValueInfo.updateHotness(Hotness);
@@ -636,24 +641,33 @@ static void computeVariableSummary(ModuleSummaryIndex &Index,
   Index.addGlobalValueSummary(V, std::move(GVarSummary));
 }
 
-static void
-computeAliasSummary(ModuleSummaryIndex &Index, const GlobalAlias &A,
-                    DenseSet<GlobalValue::GUID> &CantBePromoted) {
-  bool NonRenamableLocal = isNonRenamableLocal(A);
+static void computeGlobalIndirectSummary(
+    ModuleSummaryIndex &Index, GlobalValueSummary::SummaryKind Kind,
+    const GlobalValue &GIS, DenseSet<GlobalValue::GUID> &CantBePromoted) {
+  bool NonRenamableLocal = isNonRenamableLocal(GIS);
   GlobalValueSummary::GVFlags Flags(
-      A.getLinkage(), A.getVisibility(), NonRenamableLocal,
-      /* Live = */ false, A.isDSOLocal(),
-      A.hasLinkOnceODRLinkage() && A.hasGlobalUnnamedAddr());
-  auto AS = std::make_unique<AliasSummary>(Flags);
-  auto *Aliasee = A.getAliaseeObject();
-  auto AliaseeVI = Index.getValueInfo(Aliasee->getGUID());
-  assert(AliaseeVI && "Alias expects aliasee summary to be available");
-  assert(AliaseeVI.getSummaryList().size() == 1 &&
-         "Expected a single entry per aliasee in per-module index");
-  AS->setAliasee(AliaseeVI, AliaseeVI.getSummaryList()[0].get());
+      GIS.getLinkage(), GIS.getVisibility(), NonRenamableLocal,
+      /* Live = */ false, GIS.isDSOLocal(),
+      GIS.hasLinkOnceODRLinkage() && GIS.hasGlobalUnnamedAddr());
+
+  auto GIV = std::make_unique<GlobalIndirectValueSummary>(Kind, Flags);
+  const GlobalObject *IndirectSymbol = nullptr;
+  if (auto *GA = dyn_cast<GlobalAlias>(&GIS))
+    IndirectSymbol = GA->getAliaseeObject();
+  else if (auto *GI = dyn_cast<GlobalIFunc>(&GIS))
+    IndirectSymbol = GI->getResolverFunction();
+
+  assert(IndirectSymbol && "Wrong global object type");
+  auto IndirectSymbolVI = Index.getValueInfo(IndirectSymbol->getGUID());
+  assert(IndirectSymbolVI &&
+         "GlobalIndirectValue expects indirect summary to be available");
+  assert(IndirectSymbolVI.getSummaryList().size() == 1 &&
+         "Expected a single entry per indirect symbol in per-module index");
+  GIV->setIndirectSymbol(IndirectSymbolVI,
+                         IndirectSymbolVI.getSummaryList()[0].get());
   if (NonRenamableLocal)
-    CantBePromoted.insert(A.getGUID());
-  Index.addGlobalValueSummary(A, std::move(AS));
+    CantBePromoted.insert(GIS.getGUID());
+  Index.addGlobalValueSummary(GIS, std::move(GIV));
 }
 
 // Set LiveRoot flag on entries matching the given value name.
@@ -797,10 +811,15 @@ ModuleSummaryIndex llvm::buildModuleSummaryIndex(
     computeVariableSummary(Index, G, CantBePromoted, M, Types);
   }
 
-  // Compute summaries for all aliases defined in module, and save in the
-  // index.
+  // Compute summaries for all aliases and ifuncs defined in module,
+  // and save in the index.
+  for (const GlobalIFunc &I : M.ifuncs())
+    computeGlobalIndirectSummary(Index, GlobalValueSummary::IfuncKind, I,
+                                 CantBePromoted);
+
   for (const GlobalAlias &A : M.aliases())
-    computeAliasSummary(Index, A, CantBePromoted);
+    computeGlobalIndirectSummary(Index, GlobalValueSummary::AliasKind, A,
+                                 CantBePromoted);
 
   for (auto *V : LocalsUsed) {
     auto *Summary = Index.getGlobalValueSummary(*V);

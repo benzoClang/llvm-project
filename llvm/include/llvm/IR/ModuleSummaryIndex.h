@@ -290,7 +290,12 @@ template <> struct DenseMapInfo<ValueInfo> {
 class GlobalValueSummary {
 public:
   /// Sububclass discriminator (for dyn_cast<> et al.)
-  enum SummaryKind : unsigned { AliasKind, FunctionKind, GlobalVarKind };
+  enum SummaryKind : unsigned {
+    AliasKind,
+    IfuncKind,
+    FunctionKind,
+    GlobalVarKind
+  };
 
   /// Group flags (Linkage, NotEligibleToImport, etc.) as a bitfield.
   struct GVFlags {
@@ -371,8 +376,9 @@ private:
 protected:
   GlobalValueSummary(SummaryKind K, GVFlags Flags, std::vector<ValueInfo> Refs)
       : Kind(K), Flags(Flags), RefEdgeList(std::move(Refs)) {
-    assert((K != AliasKind || Refs.empty()) &&
-           "Expect no references for AliasSummary");
+
+    assert(((K != AliasKind && K != IfuncKind) || (Refs.empty())) &&
+           "Expect no references for Alias and Ifunc summary");
   }
 
 public:
@@ -437,74 +443,99 @@ public:
   /// Return the list of values referenced by this global value definition.
   ArrayRef<ValueInfo> refs() const { return RefEdgeList; }
 
-  /// If this is an alias summary, returns the summary of the aliased object (a
-  /// global variable or function), otherwise returns itself.
+  /// If this is an global indirect value summary, returns the summary of the
+  /// indirect object (a global variable or function), otherwise returns itself.
   GlobalValueSummary *getBaseObject();
   const GlobalValueSummary *getBaseObject() const;
 
   friend class ModuleSummaryIndex;
 };
 
-/// Alias summary information.
-class AliasSummary : public GlobalValueSummary {
-  ValueInfo AliaseeValueInfo;
-
-  /// This is the Aliasee in the same module as alias (could get from VI, trades
-  /// memory for time). Note that this pointer may be null (and the value info
-  /// empty) when we have a distributed index where the alias is being imported
-  /// (as a copy of the aliasee), but the aliasee is not.
-  GlobalValueSummary *AliaseeSummary;
+class GlobalIndirectValueSummary : public GlobalValueSummary {
+  ValueInfo IndirectValueInfo;
+  /// This is the Aliasee in the same module as alias or Resolver in the same
+  /// module as ifunc (could get from VI, trades memory for time). Note that
+  /// this pointer may be null (and the value info empty) when we have a
+  /// distributed index where the alias is being imported (as a copy of the
+  /// aliasee), but the aliasee is not.
+  GlobalValueSummary *IndirectValueSummary;
 
 public:
-  AliasSummary(GVFlags Flags)
-      : GlobalValueSummary(AliasKind, Flags, ArrayRef<ValueInfo>{}),
-        AliaseeSummary(nullptr) {}
+  GlobalIndirectValueSummary(enum SummaryKind kind, GVFlags Flags)
+      : GlobalValueSummary(kind, Flags, ArrayRef<ValueInfo>{}),
+        IndirectValueSummary(nullptr) {}
+
+  static bool classof(const GlobalValueSummary *GVS) {
+    auto kind = GVS->getSummaryKind();
+    return kind == AliasKind || kind == IfuncKind;
+  }
+
+  void setIndirectSymbol(ValueInfo &ValueInfo, GlobalValueSummary *Summary) {
+    IndirectValueInfo = ValueInfo;
+    IndirectValueSummary = Summary;
+  }
+
+  bool hasIndirectSymbol() const {
+    assert(!!IndirectValueSummary ==
+               (IndirectValueInfo &&
+                !IndirectValueInfo.getSummaryList().empty()) &&
+           "Expect to have both value summary and summary list or neither");
+    return !!IndirectValueSummary;
+  }
+
+  const GlobalValueSummary &getIndirectSymbol() const {
+    assert(IndirectValueSummary && "Unexpected missing resolver summary");
+    return *IndirectValueSummary;
+  }
+
+  GlobalValueSummary &getIndirectSymbol() {
+    return const_cast<GlobalValueSummary &>(
+        static_cast<const GlobalIndirectValueSummary *>(this)
+            ->getIndirectSymbol());
+  }
+
+  ValueInfo getIndirectSymbolVI() const {
+    assert(IndirectValueInfo && "Unexpected missing indirect value info");
+    return IndirectValueInfo;
+  }
+
+  GlobalValue::GUID getIndirectSymbolGUID() const {
+    assert(IndirectValueInfo && "Unexpected missing indirect value info");
+    return IndirectValueInfo.getGUID();
+  }
+};
+
+/// Alias summary information.
+class AliasSummary : public GlobalIndirectValueSummary {
+public:
+  AliasSummary(GVFlags Flags) : GlobalIndirectValueSummary(AliasKind, Flags) {}
 
   /// Check if this is an alias summary.
   static bool classof(const GlobalValueSummary *GVS) {
     return GVS->getSummaryKind() == AliasKind;
   }
+};
 
-  void setAliasee(ValueInfo &AliaseeVI, GlobalValueSummary *Aliasee) {
-    AliaseeValueInfo = AliaseeVI;
-    AliaseeSummary = Aliasee;
-  }
+/// Ifunc summary information.
+class IfuncSummary : public GlobalIndirectValueSummary {
+public:
+  IfuncSummary(GVFlags Flags) : GlobalIndirectValueSummary(IfuncKind, Flags) {}
 
-  bool hasAliasee() const {
-    assert(!!AliaseeSummary == (AliaseeValueInfo &&
-                                !AliaseeValueInfo.getSummaryList().empty()) &&
-           "Expect to have both aliasee summary and summary list or neither");
-    return !!AliaseeSummary;
-  }
-
-  const GlobalValueSummary &getAliasee() const {
-    assert(AliaseeSummary && "Unexpected missing aliasee summary");
-    return *AliaseeSummary;
-  }
-
-  GlobalValueSummary &getAliasee() {
-    return const_cast<GlobalValueSummary &>(
-                         static_cast<const AliasSummary *>(this)->getAliasee());
-  }
-  ValueInfo getAliaseeVI() const {
-    assert(AliaseeValueInfo && "Unexpected missing aliasee");
-    return AliaseeValueInfo;
-  }
-  GlobalValue::GUID getAliaseeGUID() const {
-    assert(AliaseeValueInfo && "Unexpected missing aliasee");
-    return AliaseeValueInfo.getGUID();
+  /// Check if this is an ifunc summary.
+  static bool classof(const GlobalValueSummary *GVS) {
+    return GVS->getSummaryKind() == IfuncKind;
   }
 };
 
 const inline GlobalValueSummary *GlobalValueSummary::getBaseObject() const {
-  if (auto *AS = dyn_cast<AliasSummary>(this))
-    return &AS->getAliasee();
+  if (auto *GIV = dyn_cast<GlobalIndirectValueSummary>(this))
+    return &GIV->getIndirectSymbol();
   return this;
 }
 
 inline GlobalValueSummary *GlobalValueSummary::getBaseObject() {
-  if (auto *AS = dyn_cast<AliasSummary>(this))
-    return &AS->getAliasee();
+  if (auto *GIV = dyn_cast<GlobalIndirectValueSummary>(this))
+    return &GIV->getIndirectSymbol();
   return this;
 }
 
@@ -1171,7 +1202,7 @@ public:
   // in the way some record are interpreted, like flags for instance.
   // Note that incrementing this may require changes in both BitcodeReader.cpp
   // and BitcodeWriter.cpp.
-  static constexpr uint64_t BitcodeSummaryVersion = 9;
+  static constexpr uint64_t BitcodeSummaryVersion = 10;
 
   // Regular LTO module name for ASM writer
   static constexpr const char *getRegularLTOModuleName() {

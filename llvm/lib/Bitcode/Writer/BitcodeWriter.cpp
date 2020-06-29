@@ -454,11 +454,14 @@ public:
       for (auto &M : *ModuleToSummariesForIndex)
         for (auto &Summary : M.second) {
           Callback(Summary, false);
-          // Ensure aliasee is handled, e.g. for assigning a valueId,
+          // Ensure aliasee and ifunc resolver are handled,
+          // e.g. for assigning a valueId,
           // even if we are not importing the aliasee directly (the
           // imported alias will contain a copy of aliasee).
-          if (auto *AS = dyn_cast<AliasSummary>(Summary.getSecond()))
-            Callback({AS->getAliaseeGUID(), &AS->getAliasee()}, true);
+          if (auto *GIV =
+                  dyn_cast<GlobalIndirectValueSummary>(Summary.getSecond()))
+            Callback({GIV->getIndirectSymbolGUID(), &GIV->getIndirectSymbol()},
+                     true);
         }
     } else {
       for (auto &Summaries : Index)
@@ -4001,6 +4004,14 @@ void ModuleBitcodeWriterBase::writePerModuleGlobalValueSummary() {
   Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8));   // valueid
   unsigned FSAliasAbbrev = Stream.EmitAbbrev(std::move(Abbv));
 
+  // Abbrev for FS_IFUNC.
+  Abbv = std::make_shared<BitCodeAbbrev>();
+  Abbv->Add(BitCodeAbbrevOp(bitc::FS_IFUNC));
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // valueid
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // flags
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // valueid
+  unsigned FSIfuncAbbrev = Stream.EmitAbbrev(std::move(Abbv));
+
   // Abbrev for FS_TYPE_ID_METADATA
   Abbv = std::make_shared<BitCodeAbbrev>();
   Abbv->Add(BitCodeAbbrevOp(bitc::FS_TYPE_ID_METADATA));
@@ -4038,8 +4049,23 @@ void ModuleBitcodeWriterBase::writePerModuleGlobalValueSummary() {
     writeModuleLevelReferences(G, NameVals, FSModRefsAbbrev,
                                FSModVTableRefsAbbrev);
 
+  for (const GlobalIFunc &I : M.ifuncs()) {
+    const GlobalObject *Resolver = I.getResolverFunction();
+    auto IfuncId = VE.getValueID(&I);
+    auto ResolverId = VE.getValueID(Resolver);
+
+    auto *Summary = Index->getGlobalValueSummary(I);
+    IfuncSummary *IF = cast<IfuncSummary>(Summary);
+
+    NameVals.push_back(IfuncId);
+    NameVals.push_back(getEncodedGVSummaryFlags(IF->flags()));
+    NameVals.push_back(ResolverId);
+    Stream.EmitRecord(bitc::FS_IFUNC, NameVals, FSIfuncAbbrev);
+    NameVals.clear();
+  }
+
   for (const GlobalAlias &A : M.aliases()) {
-    auto *Aliasee = A.getAliaseeObject();
+    const GlobalObject *Aliasee = A.getAliaseeObject();
     if (!Aliasee->hasName())
       // Nameless function don't have an entry in the summary, skip it.
       continue;
@@ -4070,7 +4096,7 @@ void ModuleBitcodeWriterBase::writePerModuleGlobalValueSummary() {
 
 /// Emit the combined summary section into the combined index file.
 void IndexBitcodeWriter::writeCombinedGlobalValueSummary() {
-  Stream.EnterSubblock(bitc::GLOBALVAL_SUMMARY_BLOCK_ID, 3);
+  Stream.EnterSubblock(bitc::GLOBALVAL_SUMMARY_BLOCK_ID, 4);
   Stream.EmitRecord(
       bitc::FS_VERSION,
       ArrayRef<uint64_t>{ModuleSummaryIndex::BitcodeSummaryVersion});
@@ -4135,12 +4161,24 @@ void IndexBitcodeWriter::writeCombinedGlobalValueSummary() {
   Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6));   // flags
   Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8));   // valueid
   unsigned FSAliasAbbrev = Stream.EmitAbbrev(std::move(Abbv));
+  // Abbrev for FS_COMBINED_IFUNC.
+  Abbv = std::make_shared<BitCodeAbbrev>();
+  Abbv->Add(BitCodeAbbrevOp(bitc::FS_COMBINED_IFUNC));
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // valueid
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // modid
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // flags
+  Abbv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // valueid
+  unsigned FSIfuncAbbrev = Stream.EmitAbbrev(std::move(Abbv));
 
   // The aliases are emitted as a post-pass, and will point to the value
   // id of the aliasee. Save them in a vector for post-processing.
   SmallVector<AliasSummary *, 64> Aliases;
 
-  // Save the value id for each summary for alias emission.
+  // The ifuncs are emitted as a post-pass, and will point to the value
+  // id of the resolver. Save them in a vector for post-processing.
+  SmallVector<IfuncSummary *, 64> Ifuncs;
+
+  // Save the value id for each summary for alias and ifunc emission.
   DenseMap<const GlobalValueSummary *, unsigned> SummaryToValueIdMap;
 
   SmallVector<uint64_t, 64> NameVals;
@@ -4167,7 +4205,7 @@ void IndexBitcodeWriter::writeCombinedGlobalValueSummary() {
   };
 
   std::set<GlobalValue::GUID> DefOrUseGUIDs;
-  forEachSummary([&](GVInfo I, bool IsAliasee) {
+  forEachSummary([&](GVInfo I, bool IsAliaseeOrIRes) {
     GlobalValueSummary *S = I.second;
     assert(S);
     DefOrUseGUIDs.insert(I.first);
@@ -4178,16 +4216,24 @@ void IndexBitcodeWriter::writeCombinedGlobalValueSummary() {
     assert(ValueId);
     SummaryToValueIdMap[S] = *ValueId;
 
-    // If this is invoked for an aliasee, we want to record the above
-    // mapping, but then not emit a summary entry (if the aliasee is
-    // to be imported, we will invoke this separately with IsAliasee=false).
-    if (IsAliasee)
+    // If this is invoked for an aliasee or ifunc resolver, we want to record
+    // the above mapping, but then not emit a summary entry (if the aliasee is
+    // to be imported, we will invoke this separately with
+    // IsAliaseeOrIRes=false).
+    if (IsAliaseeOrIRes)
       return;
 
     if (auto *AS = dyn_cast<AliasSummary>(S)) {
       // Will process aliases as a post-pass because the reader wants all
       // global to be loaded first.
       Aliases.push_back(AS);
+      return;
+    }
+
+    if (auto *IF = dyn_cast<IfuncSummary>(S)) {
+      // Will process ifuncs as a post-pass because the reader wants all
+      // global to be loaded first.
+      Ifuncs.push_back(IF);
       return;
     }
 
@@ -4282,7 +4328,7 @@ void IndexBitcodeWriter::writeCombinedGlobalValueSummary() {
     NameVals.push_back(AliasValueId);
     NameVals.push_back(Index.getModuleId(AS->modulePath()));
     NameVals.push_back(getEncodedGVSummaryFlags(AS->flags()));
-    auto AliaseeValueId = SummaryToValueIdMap[&AS->getAliasee()];
+    auto AliaseeValueId = SummaryToValueIdMap[&AS->getIndirectSymbol()];
     assert(AliaseeValueId);
     NameVals.push_back(AliaseeValueId);
 
@@ -4291,10 +4337,28 @@ void IndexBitcodeWriter::writeCombinedGlobalValueSummary() {
     NameVals.clear();
     MaybeEmitOriginalName(*AS);
 
-    if (auto *FS = dyn_cast<FunctionSummary>(&AS->getAliasee()))
+    if (auto *FS = dyn_cast<FunctionSummary>(&AS->getIndirectSymbol()))
       getReferencedTypeIds(FS, ReferencedTypeIds);
   }
+  for (auto *IF : Ifuncs) {
+    auto IfuncValueId = SummaryToValueIdMap[IF];
+    assert(IfuncValueId);
+    NameVals.push_back(IfuncValueId);
+    NameVals.push_back(Index.getModuleId(IF->modulePath()));
+    NameVals.push_back(getEncodedGVSummaryFlags(IF->flags()));
+    auto ResolverValueId = SummaryToValueIdMap[&IF->getIndirectSymbol()];
+    assert(ResolverValueId);
+    NameVals.push_back(ResolverValueId);
 
+    // Emit the finished record.
+    Stream.EmitRecord(bitc::FS_COMBINED_IFUNC, NameVals, FSIfuncAbbrev);
+    NameVals.clear();
+    MaybeEmitOriginalName(*IF);
+
+    auto *FS = dyn_cast<FunctionSummary>(&IF->getIndirectSymbol());
+    assert(FS);
+    getReferencedTypeIds(FS, ReferencedTypeIds);
+  }
   if (!Index.cfiFunctionDefs().empty()) {
     for (auto &S : Index.cfiFunctionDefs()) {
       if (DefOrUseGUIDs.count(

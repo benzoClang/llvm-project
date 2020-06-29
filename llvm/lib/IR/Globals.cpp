@@ -18,6 +18,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalAlias.h"
+#include "llvm/IR/GlobalIFunc.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Module.h"
@@ -163,6 +164,10 @@ StringRef GlobalValue::getSection() const {
   if (auto *GA = dyn_cast<GlobalAlias>(this)) {
     // In general we cannot compute this at the IR level, but we try.
     if (const GlobalObject *GO = GA->getAliaseeObject())
+      return GO->getSection();
+    return "";
+  } else if (auto *GI = dyn_cast<GlobalIFunc>(this)) {
+    if (const GlobalObject *GO = GI->getResolverFunction())
       return GO->getSection();
     return "";
   }

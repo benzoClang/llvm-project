@@ -286,6 +286,11 @@ bool LLParser::validateEndOfIndex() {
                  "use of undefined summary '^" +
                      Twine(ForwardRefAliasees.begin()->first) + "'");
 
+  if (!ForwardRefResolvers.empty())
+    return error(ForwardRefResolvers.begin()->second.front().second,
+                 "use of undefined summary '^" +
+                     Twine(ForwardRefResolvers.begin()->first) + "'");
+
   if (!ForwardRefTypeIds.empty())
     return error(ForwardRefTypeIds.begin()->second.front().second,
                  "use of undefined type id summary '^" +
@@ -8194,12 +8199,24 @@ void LLParser::addGlobalValueToIndex(
   auto FwdRefAliasees = ForwardRefAliasees.find(ID);
   if (FwdRefAliasees != ForwardRefAliasees.end()) {
     for (auto AliaseeRef : FwdRefAliasees->second) {
-      assert(!AliaseeRef.first->hasAliasee() &&
+      assert(!AliaseeRef.first->hasIndirectSymbol() &&
              "Forward referencing alias already has aliasee");
       assert(Summary && "Aliasee must be a definition");
-      AliaseeRef.first->setAliasee(VI, Summary.get());
+      AliaseeRef.first->setIndirectSymbol(VI, Summary.get());
     }
     ForwardRefAliasees.erase(FwdRefAliasees);
+  }
+
+  // Resolve forward references from ifuncs
+  auto FwdRefResolvers = ForwardRefResolvers.find(ID);
+  if (FwdRefResolvers != ForwardRefResolvers.end()) {
+    for (auto ResolverRef : FwdRefResolvers->second) {
+      assert(!ResolverRef.first->hasIndirectSymbol() &&
+             "Forward referencing ifunc already has resolver");
+      assert(Summary && "Resolver must be a definition");
+      ResolverRef.first->setIndirectSymbol(VI, Summary.get());
+    }
+    ForwardRefResolvers.erase(FwdRefResolvers);
   }
 
   // Add the summary if one was provided.
@@ -8312,6 +8329,10 @@ bool LLParser::parseGVEntry(unsigned ID) {
       break;
     case lltok::kw_alias:
       if (parseAliasSummary(Name, GUID, ID))
+        return true;
+      break;
+    case lltok::kw_ifunc:
+      if (parseIfuncSummary(Name, GUID, ID))
         return true;
       break;
     default:
@@ -8504,11 +8525,61 @@ bool LLParser::parseAliasSummary(std::string Name, GlobalValue::GUID GUID,
   } else {
     auto Summary = Index->findSummaryInModule(AliaseeVI, ModulePath);
     assert(Summary && "Aliasee must be a definition");
-    AS->setAliasee(AliaseeVI, Summary);
+    AS->setIndirectSymbol(AliaseeVI, Summary);
   }
 
   addGlobalValueToIndex(Name, GUID, (GlobalValue::LinkageTypes)GVFlags.Linkage,
                         ID, std::move(AS));
+
+  return false;
+}
+
+/// IfuncSummary
+///   ::= 'ifunc' ':' '(' 'module' ':' ModuleReference ',' GVFlags ','
+///         'resolver' ':' GVReference ')'
+bool LLParser::parseIfuncSummary(std::string Name, GlobalValue::GUID GUID,
+                                 unsigned ID) {
+  assert(Lex.getKind() == lltok::kw_ifunc);
+  LocTy Loc = Lex.getLoc();
+  Lex.Lex();
+
+  StringRef ModulePath;
+  GlobalValueSummary::GVFlags GVFlags = GlobalValueSummary::GVFlags(
+      GlobalValue::ExternalLinkage, GlobalValue::DefaultVisibility,
+      /*NotEligibleToImport=*/false,
+      /*Live=*/false, /*IsLocal=*/false, /*CanAutoHide=*/false);
+  if (parseToken(lltok::colon, "expected ':' here") ||
+      parseToken(lltok::lparen, "expected '(' here") ||
+      parseModuleReference(ModulePath) ||
+      parseToken(lltok::comma, "expected ',' here") || parseGVFlags(GVFlags) ||
+      parseToken(lltok::comma, "expected ',' here") ||
+      parseToken(lltok::kw_resolver, "expected 'resolver' here") ||
+      parseToken(lltok::colon, "expected ':' here"))
+    return true;
+
+  ValueInfo ResolverVI;
+  unsigned GVId;
+  if (parseGVReference(ResolverVI, GVId))
+    return true;
+
+  if (parseToken(lltok::rparen, "expected ')' here"))
+    return true;
+
+  auto IF = std::make_unique<IfuncSummary>(GVFlags);
+
+  IF->setModulePath(ModulePath);
+
+  // Record forward reference if the resolver is not parsed yet.
+  if (ResolverVI.getRef() == FwdVIRef) {
+    ForwardRefResolvers[GVId].emplace_back(IF.get(), Loc);
+  } else {
+    auto Summary = Index->findSummaryInModule(ResolverVI, ModulePath);
+    assert(Summary && "Resolver must be a definition");
+    IF->setIndirectSymbol(ResolverVI, Summary);
+  }
+
+  addGlobalValueToIndex(Name, GUID, (GlobalValue::LinkageTypes)GVFlags.Linkage,
+                        ID, std::move(IF));
 
   return false;
 }

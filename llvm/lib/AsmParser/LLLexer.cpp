@@ -786,6 +786,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(vTableFuncs);
   KEYWORD(virtFunc);
   KEYWORD(aliasee);
+  KEYWORD(resolver);
   KEYWORD(refs);
   KEYWORD(typeIdInfo);
   KEYWORD(typeTests);

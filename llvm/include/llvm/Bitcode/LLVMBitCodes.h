@@ -298,6 +298,10 @@ enum GlobalValueSummarySymtabCodes {
   // Range information for accessed offsets for every argument.
   // [n x (paramno, range, numcalls, numcalls x (callee_guid, paramno, range))]
   FS_PARAM_ACCESS = 25,
+  // IFUNC: [valueid, flags, valueid]
+  FS_IFUNC = 26,
+  // COMBINED_IFUNC: [valueid, modid, flags, valueid]
+  FS_COMBINED_IFUNC = 27,
 };
 
 enum MetadataCodes {

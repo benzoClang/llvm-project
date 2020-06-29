@@ -631,7 +631,7 @@ FunctionSummary *findCalleeFunctionSummary(ValueInfo VI, StringRef ModuleId) {
     if (!GVS->isLive())
       continue;
     if (const AliasSummary *AS = dyn_cast<AliasSummary>(GVS.get()))
-      if (!AS->hasAliasee())
+      if (!AS->hasIndirectSymbol())
         continue;
     if (!isa<FunctionSummary>(GVS->getBaseObject()))
       continue;
@@ -667,7 +667,7 @@ FunctionSummary *findCalleeFunctionSummary(ValueInfo VI, StringRef ModuleId) {
     if (FunctionSummary *FS = dyn_cast<FunctionSummary>(S))
       return FS;
     AliasSummary *AS = dyn_cast<AliasSummary>(S);
-    if (!AS || !AS->hasAliasee())
+    if (!AS || !AS->hasIndirectSymbol())
       return nullptr;
     S = AS->getBaseObject();
     if (S == AS)

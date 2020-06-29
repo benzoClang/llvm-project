@@ -475,7 +475,7 @@ static std::string getNodeVisualName(const ValueInfo &VI) {
 }
 
 static std::string getNodeLabel(const ValueInfo &VI, GlobalValueSummary *GVS) {
-  if (isa<AliasSummary>(GVS))
+  if (isa<GlobalIndirectValueSummary>(GVS))
     return getNodeVisualName(VI);
 
   std::string Attrs = getSummaryAttributes(GVS);
@@ -629,8 +629,9 @@ void ModuleSummaryIndex::exportToDot(
         Draw(SummaryIt.first, R.getGUID(),
              R.isWriteOnly() ? -1 : (R.isReadOnly() ? -2 : -3));
 
-      if (auto *AS = dyn_cast_or_null<AliasSummary>(SummaryIt.second)) {
-        Draw(SummaryIt.first, AS->getAliaseeGUID(), -4);
+      if (auto *GIV =
+              dyn_cast_or_null<GlobalIndirectValueSummary>(SummaryIt.second)) {
+        Draw(SummaryIt.first, GIV->getIndirectSymbolGUID(), -4);
         continue;
       }
 

@@ -140,6 +140,7 @@ static Optional<const char *> GetCodeName(unsigned CodeID, unsigned BlockID,
       STRINGIFY_CODE(MODULE_CODE, METADATA_VALUES_UNUSED)
       STRINGIFY_CODE(MODULE_CODE, SOURCE_FILENAME)
       STRINGIFY_CODE(MODULE_CODE, HASH)
+      STRINGIFY_CODE(MODULE_CODE, IFUNC)
     }
   case bitc::IDENTIFICATION_BLOCK_ID:
     switch (CodeID) {
@@ -313,6 +314,7 @@ static Optional<const char *> GetCodeName(unsigned CodeID, unsigned BlockID,
       STRINGIFY_CODE(FS, TYPE_ID_METADATA)
       STRINGIFY_CODE(FS, BLOCK_COUNT)
       STRINGIFY_CODE(FS, PARAM_ACCESS)
+      STRINGIFY_CODE(FS, IFUNC)
     }
   case bitc::METADATA_ATTACHMENT_ID:
     switch (CodeID) {

@@ -5929,12 +5929,14 @@ Error ModuleSummaryIndexBitcodeReader::parseModule() {
           // was historically always the start of the regular bitcode header.
           VSTOffset = Record[0] - 1;
           break;
-        // v1 GLOBALVAR: [pointer type, isconst,     initid,       linkage, ...]
-        // v1 FUNCTION:  [type,         callingconv, isproto,      linkage, ...]
-        // v1 ALIAS:     [alias type,   addrspace,   aliasee val#, linkage, ...]
+        // v1 GLOBALVAR: [pointer type, isconst,     initid,        linkage, ...]
+        // v1 FUNCTION:  [type,         callingconv, isproto,       linkage, ...]
+        // v1 IFUNC:     [ifunc type,   addrspace,   resolver val#, linkage, ...]
+        // v1 ALIAS:     [alias type,   addrspace,   aliasee val#,  linkage, ...]
         // v2: [strtab offset, strtab size, v1]
         case bitc::MODULE_CODE_GLOBALVAR:
         case bitc::MODULE_CODE_FUNCTION:
+        case bitc::MODULE_CODE_IFUNC:
         case bitc::MODULE_CODE_ALIAS: {
           StringRef Name;
           ArrayRef<uint64_t> GVRecord;
@@ -6279,13 +6281,42 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       auto AliaseeInModule = TheIndex.findSummaryInModule(AliaseeVI, ModulePath);
       if (!AliaseeInModule)
         return error("Alias expects aliasee summary to be parsed");
-      AS->setAliasee(AliaseeVI, AliaseeInModule);
+      AS->setIndirectSymbol(AliaseeVI, AliaseeInModule);
 
       auto GUID = getValueInfoFromValueId(ValueID);
       AS->setOriginalName(GUID.second);
       TheIndex.addGlobalValueSummary(GUID.first, std::move(AS));
       break;
     }
+    // FS_IFUNC: [valueid, flags, valueid]
+    // Ifuncs must be emitted (and parsed) after all FS_PERMODULE entries, as
+    // they expect all resolver summaries to be available.
+    case bitc::FS_IFUNC: {
+      unsigned ValueID = Record[0];
+      uint64_t RawFlags = Record[1];
+      unsigned ResolverID = Record[2];
+      auto Flags = getDecodedGVSummaryFlags(RawFlags, Version);
+      auto IF = std::make_unique<IfuncSummary>(Flags);
+      // The module path string ref set in the summary must be owned by the
+      // index's module string table. Since we don't have a module path
+      // string table section in the per-module index, we create a single
+      // module path string table entry with an empty (0) ID to take
+      // ownership.
+      IF->setModulePath(getThisModule()->first());
+
+      auto ResolverVI = getValueInfoFromValueId(ResolverID).first;
+      auto ResolverInModule =
+          TheIndex.findSummaryInModule(ResolverVI, ModulePath);
+      if (!ResolverInModule)
+        return error("Ifunc expects resolver summary to be parsed");
+      IF->setIndirectSymbol(ResolverVI, ResolverInModule);
+
+      auto GUID = getValueInfoFromValueId(ValueID);
+      IF->setOriginalName(GUID.second);
+      TheIndex.addGlobalValueSummary(GUID.first, std::move(IF));
+      break;
+    }
+
     // FS_PERMODULE_GLOBALVAR_INIT_REFS: [valueid, flags, varflags, n x valueid]
     case bitc::FS_PERMODULE_GLOBALVAR_INIT_REFS: {
       unsigned ValueID = Record[0];
@@ -6417,11 +6448,34 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
 
       auto AliaseeVI = getValueInfoFromValueId(AliaseeValueId).first;
       auto AliaseeInModule = TheIndex.findSummaryInModule(AliaseeVI, AS->modulePath());
-      AS->setAliasee(AliaseeVI, AliaseeInModule);
+      AS->setIndirectSymbol(AliaseeVI, AliaseeInModule);
 
       ValueInfo VI = getValueInfoFromValueId(ValueID).first;
       LastSeenGUID = VI.getGUID();
       TheIndex.addGlobalValueSummary(VI, std::move(AS));
+      break;
+    }
+    // FS_COMBINED_IFUNC: [valueid, modid, flags, valueid]
+    // Ifuncs must be emitted (and parsed) after all FS_COMBINED entries, as
+    // they expect all resolver summaries to be available.
+    case bitc::FS_COMBINED_IFUNC: {
+      unsigned ValueID = Record[0];
+      uint64_t ModuleId = Record[1];
+      uint64_t RawFlags = Record[2];
+      unsigned ResolverValueId = Record[3];
+      auto Flags = getDecodedGVSummaryFlags(RawFlags, Version);
+      auto IF = std::make_unique<IfuncSummary>(Flags);
+      LastSeenSummary = IF.get();
+      IF->setModulePath(ModuleIdMap[ModuleId]);
+
+      auto ResolverVI = getValueInfoFromValueId(ResolverValueId).first;
+      auto ResolverInModule =
+          TheIndex.findSummaryInModule(ResolverVI, IF->modulePath());
+      IF->setIndirectSymbol(ResolverVI, ResolverInModule);
+
+      ValueInfo VI = getValueInfoFromValueId(ValueID).first;
+      LastSeenGUID = VI.getGUID();
+      TheIndex.addGlobalValueSummary(VI, std::move(IF));
       break;
     }
     // FS_COMBINED_GLOBALVAR_INIT_REFS: [valueid, modid, flags, n x valueid]
