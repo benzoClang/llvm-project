@@ -3079,7 +3079,7 @@ static inline kmp_team_t *__kmp_team_from_gtid(int gtid) {
 }
 
 static inline void __kmp_assert_valid_gtid(kmp_int32 gtid) {
-  if (UNLIKELY(gtid < 0 || gtid >= __kmp_threads_capacity))
+  if (gtid < 0 || gtid >= __kmp_threads_capacity)
     KMP_FATAL(ThreadIdentInvalid);
 }
 
