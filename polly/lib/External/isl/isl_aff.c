@@ -196,6 +196,23 @@ __isl_give isl_aff *isl_aff_nan_on_domain(__isl_take isl_local_space *ls)
 	return isl_aff_set_nan(aff);
 }
 
+/* Return an affine expression defined on the specified domain space
+ * that represents NaN.
+ */
+__isl_give isl_aff *isl_aff_nan_on_domain_space(__isl_take isl_space *space)
+{
+	return isl_aff_nan_on_domain(isl_local_space_from_space(space));
+}
+
+/* Return a piecewise affine expression defined on the specified domain space
+ * that represents NaN.
+ */
+__isl_give isl_pw_aff *isl_pw_aff_nan_on_domain_space(
+	__isl_take isl_space *space)
+{
+	return isl_pw_aff_from_aff(isl_aff_nan_on_domain_space(space));
+}
+
 /* Return a piecewise affine expression defined on the specified domain
  * that represents NaN.
  */
@@ -901,25 +918,12 @@ __isl_give isl_aff *isl_aff_add_constant(__isl_take isl_aff *aff, isl_int v)
 	return aff;
 }
 
-/* Add "v" to the constant term of "aff".
- *
- * A NaN is unaffected by this operation.
+/* Add "v" to the constant term of "aff",
+ * in case "aff" is a rational expression.
  */
-__isl_give isl_aff *isl_aff_add_constant_val(__isl_take isl_aff *aff,
+static __isl_give isl_aff *isl_aff_add_rat_constant_val(__isl_take isl_aff *aff,
 	__isl_take isl_val *v)
 {
-	if (!aff || !v)
-		goto error;
-
-	if (isl_aff_is_nan(aff) || isl_val_is_zero(v)) {
-		isl_val_free(v);
-		return aff;
-	}
-
-	if (!isl_val_is_rat(v))
-		isl_die(isl_aff_get_ctx(aff), isl_error_invalid,
-			"expecting rational value", goto error);
-
 	aff = isl_aff_cow(aff);
 	if (!aff)
 		goto error;
@@ -947,6 +951,58 @@ __isl_give isl_aff *isl_aff_add_constant_val(__isl_take isl_aff *aff,
 
 	isl_val_free(v);
 	return aff;
+error:
+	isl_aff_free(aff);
+	isl_val_free(v);
+	return NULL;
+}
+
+/* Return the first argument and free the second.
+ */
+static __isl_give isl_aff *pick_free(__isl_take isl_aff *aff,
+	__isl_take isl_val *v)
+{
+	isl_val_free(v);
+	return aff;
+}
+
+/* Replace the first argument by NaN and free the second argument.
+ */
+static __isl_give isl_aff *set_nan_free_val(__isl_take isl_aff *aff,
+	__isl_take isl_val *v)
+{
+	isl_val_free(v);
+	return isl_aff_set_nan(aff);
+}
+
+/* Add "v" to the constant term of "aff".
+ *
+ * A NaN is unaffected by this operation.
+ * Conversely, adding a NaN turns "aff" into a NaN.
+ */
+__isl_give isl_aff *isl_aff_add_constant_val(__isl_take isl_aff *aff,
+	__isl_take isl_val *v)
+{
+	isl_bool is_nan, is_zero, is_rat;
+
+	is_nan = isl_aff_is_nan(aff);
+	is_zero = isl_val_is_zero(v);
+	if (is_nan < 0 || is_zero < 0)
+		goto error;
+	if (is_nan || is_zero)
+		return pick_free(aff, v);
+
+	is_nan = isl_val_is_nan(v);
+	is_rat = isl_val_is_rat(v);
+	if (is_nan < 0 || is_rat < 0)
+		goto error;
+	if (is_nan)
+		return set_nan_free_val(aff, v);
+	if (!is_rat)
+		isl_die(isl_aff_get_ctx(aff), isl_error_invalid,
+			"expecting rational value or NaN", goto error);
+
+	return isl_aff_add_rat_constant_val(aff, v);
 error:
 	isl_aff_free(aff);
 	isl_val_free(v);

@@ -7938,6 +7938,18 @@ static struct {
 	  "[n] -> { A[i] -> [] : 0 <= i <= n; B[] -> [] }",
 	  "[m] -> { A[i] -> [] : 0 <= i <= m; C[] -> [] }",
 	  "[m, n] -> { A[i] -> [] : 0 <= i <= n and i <= m }" },
+	{ &isl_union_map_intersect_domain_factor_domain,
+	  "{ [A[i] -> B[i + 1]] -> C[i + 2] }",
+	  "[N] -> { B[i] -> C[N] }",
+	  "{ }" },
+	{ &isl_union_map_intersect_domain_factor_domain,
+	  "{ [A[i] -> B[i + 1]] -> C[i + 2] }",
+	  "[N] -> { A[i] -> C[N] }",
+	  "[N] -> { [A[N - 2] -> B[N - 1]] -> C[N] }" },
+	{ &isl_union_map_intersect_domain_factor_domain,
+	  "{ T[A[i] -> B[i + 1]] -> C[i + 2] }",
+	  "[N] -> { A[i] -> C[N] }",
+	  "[N] -> { T[A[N - 2] -> B[N - 1]] -> C[N] }" },
 	{ &isl_union_map_intersect_domain_factor_range,
 	  "{ [A[i] -> B[i + 1]] -> C[i + 2] }",
 	  "[N] -> { B[i] -> C[N] }",
@@ -10571,9 +10583,9 @@ static int test_domain_hash(isl_ctx *ctx)
 	map = isl_map_read_from_str(ctx, "[n] -> { A[B[x] -> C[]] -> D[] }");
 	space = isl_map_get_space(map);
 	isl_map_free(map);
-	hash1 = isl_space_get_domain_hash(space);
+	hash1 = isl_space_get_full_domain_hash(space);
 	space = isl_space_domain(space);
-	hash2 = isl_space_get_hash(space);
+	hash2 = isl_space_get_full_hash(space);
 	isl_space_free(space);
 
 	if (!space)

@@ -1491,8 +1491,12 @@ public:
   inline isl::checked::map gist_domain(isl::checked::set context) const;
   inline isl::checked::map intersect(isl::checked::map map2) const;
   inline isl::checked::map intersect_domain(isl::checked::set set) const;
+  inline isl::checked::map intersect_domain_factor_domain(isl::checked::map factor) const;
+  inline isl::checked::map intersect_domain_factor_range(isl::checked::map factor) const;
   inline isl::checked::map intersect_params(isl::checked::set params) const;
   inline isl::checked::map intersect_range(isl::checked::set set) const;
+  inline isl::checked::map intersect_range_factor_domain(isl::checked::map factor) const;
+  inline isl::checked::map intersect_range_factor_range(isl::checked::map factor) const;
   inline boolean is_bijective() const;
   inline boolean is_disjoint(const isl::checked::map &map2) const;
   inline boolean is_empty() const;
@@ -2590,6 +2594,7 @@ public:
   inline isl::checked::basic_set sample() const;
   inline isl::checked::point sample_point() const;
   inline isl::checked::set subtract(isl::checked::set set2) const;
+  inline isl::checked::map translation() const;
   inline isl::checked::set unbind_params(isl::checked::multi_id tuple) const;
   inline isl::checked::map unbind_params_insert_domain(isl::checked::multi_id domain) const;
   inline isl::checked::set unite(isl::checked::set set2) const;
@@ -2780,9 +2785,13 @@ public:
   inline isl::checked::union_map intersect(isl::checked::union_map umap2) const;
   inline isl::checked::union_map intersect_domain(isl::checked::space space) const;
   inline isl::checked::union_map intersect_domain(isl::checked::union_set uset) const;
+  inline isl::checked::union_map intersect_domain_factor_domain(isl::checked::union_map factor) const;
+  inline isl::checked::union_map intersect_domain_factor_range(isl::checked::union_map factor) const;
   inline isl::checked::union_map intersect_params(isl::checked::set set) const;
   inline isl::checked::union_map intersect_range(isl::checked::space space) const;
   inline isl::checked::union_map intersect_range(isl::checked::union_set uset) const;
+  inline isl::checked::union_map intersect_range_factor_domain(isl::checked::union_map factor) const;
+  inline isl::checked::union_map intersect_range_factor_range(isl::checked::union_map factor) const;
   inline boolean is_bijective() const;
   inline boolean is_disjoint(const isl::checked::union_map &umap2) const;
   inline boolean is_empty() const;
@@ -6343,6 +6352,18 @@ isl::checked::map map::intersect_domain(isl::checked::set set) const
   return manage(res);
 }
 
+isl::checked::map map::intersect_domain_factor_domain(isl::checked::map factor) const
+{
+  auto res = isl_map_intersect_domain_factor_domain(copy(), factor.release());
+  return manage(res);
+}
+
+isl::checked::map map::intersect_domain_factor_range(isl::checked::map factor) const
+{
+  auto res = isl_map_intersect_domain_factor_range(copy(), factor.release());
+  return manage(res);
+}
+
 isl::checked::map map::intersect_params(isl::checked::set params) const
 {
   auto res = isl_map_intersect_params(copy(), params.release());
@@ -6352,6 +6373,18 @@ isl::checked::map map::intersect_params(isl::checked::set params) const
 isl::checked::map map::intersect_range(isl::checked::set set) const
 {
   auto res = isl_map_intersect_range(copy(), set.release());
+  return manage(res);
+}
+
+isl::checked::map map::intersect_range_factor_domain(isl::checked::map factor) const
+{
+  auto res = isl_map_intersect_range_factor_domain(copy(), factor.release());
+  return manage(res);
+}
+
+isl::checked::map map::intersect_range_factor_range(isl::checked::map factor) const
+{
+  auto res = isl_map_intersect_range_factor_range(copy(), factor.release());
   return manage(res);
 }
 
@@ -10654,6 +10687,12 @@ isl::checked::set set::subtract(isl::checked::set set2) const
   return manage(res);
 }
 
+isl::checked::map set::translation() const
+{
+  auto res = isl_set_translation(copy());
+  return manage(res);
+}
+
 isl::checked::set set::unbind_params(isl::checked::multi_id tuple) const
 {
   auto res = isl_set_unbind_params(copy(), tuple.release());
@@ -11413,6 +11452,18 @@ isl::checked::union_map union_map::intersect_domain(isl::checked::union_set uset
   return manage(res);
 }
 
+isl::checked::union_map union_map::intersect_domain_factor_domain(isl::checked::union_map factor) const
+{
+  auto res = isl_union_map_intersect_domain_factor_domain(copy(), factor.release());
+  return manage(res);
+}
+
+isl::checked::union_map union_map::intersect_domain_factor_range(isl::checked::union_map factor) const
+{
+  auto res = isl_union_map_intersect_domain_factor_range(copy(), factor.release());
+  return manage(res);
+}
+
 isl::checked::union_map union_map::intersect_params(isl::checked::set set) const
 {
   auto res = isl_union_map_intersect_params(copy(), set.release());
@@ -11428,6 +11479,18 @@ isl::checked::union_map union_map::intersect_range(isl::checked::space space) co
 isl::checked::union_map union_map::intersect_range(isl::checked::union_set uset) const
 {
   auto res = isl_union_map_intersect_range_union_set(copy(), uset.release());
+  return manage(res);
+}
+
+isl::checked::union_map union_map::intersect_range_factor_domain(isl::checked::union_map factor) const
+{
+  auto res = isl_union_map_intersect_range_factor_domain(copy(), factor.release());
+  return manage(res);
+}
+
+isl::checked::union_map union_map::intersect_range_factor_range(isl::checked::union_map factor) const
+{
+  auto res = isl_union_map_intersect_range_factor_range(copy(), factor.release());
   return manage(res);
 }
 

@@ -6641,6 +6641,36 @@ class union_map(object):
             obj = union_map(ctx=ctx, ptr=res)
             return obj
         raise Error
+    def intersect_domain_factor_domain(arg0, arg1):
+        try:
+            if not arg0.__class__ is union_map:
+                arg0 = union_map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is union_map:
+                arg1 = union_map(arg1)
+        except:
+            raise
+        ctx = arg0.ctx
+        res = isl.isl_union_map_intersect_domain_factor_domain(isl.isl_union_map_copy(arg0.ptr), isl.isl_union_map_copy(arg1.ptr))
+        obj = union_map(ctx=ctx, ptr=res)
+        return obj
+    def intersect_domain_factor_range(arg0, arg1):
+        try:
+            if not arg0.__class__ is union_map:
+                arg0 = union_map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is union_map:
+                arg1 = union_map(arg1)
+        except:
+            raise
+        ctx = arg0.ctx
+        res = isl.isl_union_map_intersect_domain_factor_range(isl.isl_union_map_copy(arg0.ptr), isl.isl_union_map_copy(arg1.ptr))
+        obj = union_map(ctx=ctx, ptr=res)
+        return obj
     def intersect_params(arg0, arg1):
         try:
             if not arg0.__class__ is union_map:
@@ -6668,6 +6698,36 @@ class union_map(object):
             obj = union_map(ctx=ctx, ptr=res)
             return obj
         raise Error
+    def intersect_range_factor_domain(arg0, arg1):
+        try:
+            if not arg0.__class__ is union_map:
+                arg0 = union_map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is union_map:
+                arg1 = union_map(arg1)
+        except:
+            raise
+        ctx = arg0.ctx
+        res = isl.isl_union_map_intersect_range_factor_domain(isl.isl_union_map_copy(arg0.ptr), isl.isl_union_map_copy(arg1.ptr))
+        obj = union_map(ctx=ctx, ptr=res)
+        return obj
+    def intersect_range_factor_range(arg0, arg1):
+        try:
+            if not arg0.__class__ is union_map:
+                arg0 = union_map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is union_map:
+                arg1 = union_map(arg1)
+        except:
+            raise
+        ctx = arg0.ctx
+        res = isl.isl_union_map_intersect_range_factor_range(isl.isl_union_map_copy(arg0.ptr), isl.isl_union_map_copy(arg1.ptr))
+        obj = union_map(ctx=ctx, ptr=res)
+        return obj
     def is_bijective(arg0):
         try:
             if not arg0.__class__ is union_map:
@@ -7133,12 +7193,20 @@ isl.isl_union_map_intersect_domain_space.restype = c_void_p
 isl.isl_union_map_intersect_domain_space.argtypes = [c_void_p, c_void_p]
 isl.isl_union_map_intersect_domain_union_set.restype = c_void_p
 isl.isl_union_map_intersect_domain_union_set.argtypes = [c_void_p, c_void_p]
+isl.isl_union_map_intersect_domain_factor_domain.restype = c_void_p
+isl.isl_union_map_intersect_domain_factor_domain.argtypes = [c_void_p, c_void_p]
+isl.isl_union_map_intersect_domain_factor_range.restype = c_void_p
+isl.isl_union_map_intersect_domain_factor_range.argtypes = [c_void_p, c_void_p]
 isl.isl_union_map_intersect_params.restype = c_void_p
 isl.isl_union_map_intersect_params.argtypes = [c_void_p, c_void_p]
 isl.isl_union_map_intersect_range_space.restype = c_void_p
 isl.isl_union_map_intersect_range_space.argtypes = [c_void_p, c_void_p]
 isl.isl_union_map_intersect_range_union_set.restype = c_void_p
 isl.isl_union_map_intersect_range_union_set.argtypes = [c_void_p, c_void_p]
+isl.isl_union_map_intersect_range_factor_domain.restype = c_void_p
+isl.isl_union_map_intersect_range_factor_domain.argtypes = [c_void_p, c_void_p]
+isl.isl_union_map_intersect_range_factor_range.restype = c_void_p
+isl.isl_union_map_intersect_range_factor_range.argtypes = [c_void_p, c_void_p]
 isl.isl_union_map_is_bijective.argtypes = [c_void_p]
 isl.isl_union_map_is_disjoint.argtypes = [c_void_p, c_void_p]
 isl.isl_union_map_is_empty.argtypes = [c_void_p]
@@ -7584,6 +7652,36 @@ class map(union_map):
         res = isl.isl_map_intersect_domain(isl.isl_map_copy(arg0.ptr), isl.isl_set_copy(arg1.ptr))
         obj = map(ctx=ctx, ptr=res)
         return obj
+    def intersect_domain_factor_domain(arg0, arg1):
+        try:
+            if not arg0.__class__ is map:
+                arg0 = map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is map:
+                arg1 = map(arg1)
+        except:
+            return union_map(arg0).intersect_domain_factor_domain(arg1)
+        ctx = arg0.ctx
+        res = isl.isl_map_intersect_domain_factor_domain(isl.isl_map_copy(arg0.ptr), isl.isl_map_copy(arg1.ptr))
+        obj = map(ctx=ctx, ptr=res)
+        return obj
+    def intersect_domain_factor_range(arg0, arg1):
+        try:
+            if not arg0.__class__ is map:
+                arg0 = map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is map:
+                arg1 = map(arg1)
+        except:
+            return union_map(arg0).intersect_domain_factor_range(arg1)
+        ctx = arg0.ctx
+        res = isl.isl_map_intersect_domain_factor_range(isl.isl_map_copy(arg0.ptr), isl.isl_map_copy(arg1.ptr))
+        obj = map(ctx=ctx, ptr=res)
+        return obj
     def intersect_params(arg0, arg1):
         try:
             if not arg0.__class__ is map:
@@ -7612,6 +7710,36 @@ class map(union_map):
             return union_map(arg0).intersect_range(arg1)
         ctx = arg0.ctx
         res = isl.isl_map_intersect_range(isl.isl_map_copy(arg0.ptr), isl.isl_set_copy(arg1.ptr))
+        obj = map(ctx=ctx, ptr=res)
+        return obj
+    def intersect_range_factor_domain(arg0, arg1):
+        try:
+            if not arg0.__class__ is map:
+                arg0 = map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is map:
+                arg1 = map(arg1)
+        except:
+            return union_map(arg0).intersect_range_factor_domain(arg1)
+        ctx = arg0.ctx
+        res = isl.isl_map_intersect_range_factor_domain(isl.isl_map_copy(arg0.ptr), isl.isl_map_copy(arg1.ptr))
+        obj = map(ctx=ctx, ptr=res)
+        return obj
+    def intersect_range_factor_range(arg0, arg1):
+        try:
+            if not arg0.__class__ is map:
+                arg0 = map(arg0)
+        except:
+            raise
+        try:
+            if not arg1.__class__ is map:
+                arg1 = map(arg1)
+        except:
+            return union_map(arg0).intersect_range_factor_range(arg1)
+        ctx = arg0.ctx
+        res = isl.isl_map_intersect_range_factor_range(isl.isl_map_copy(arg0.ptr), isl.isl_map_copy(arg1.ptr))
         obj = map(ctx=ctx, ptr=res)
         return obj
     def is_bijective(arg0):
@@ -8089,10 +8217,18 @@ isl.isl_map_intersect.restype = c_void_p
 isl.isl_map_intersect.argtypes = [c_void_p, c_void_p]
 isl.isl_map_intersect_domain.restype = c_void_p
 isl.isl_map_intersect_domain.argtypes = [c_void_p, c_void_p]
+isl.isl_map_intersect_domain_factor_domain.restype = c_void_p
+isl.isl_map_intersect_domain_factor_domain.argtypes = [c_void_p, c_void_p]
+isl.isl_map_intersect_domain_factor_range.restype = c_void_p
+isl.isl_map_intersect_domain_factor_range.argtypes = [c_void_p, c_void_p]
 isl.isl_map_intersect_params.restype = c_void_p
 isl.isl_map_intersect_params.argtypes = [c_void_p, c_void_p]
 isl.isl_map_intersect_range.restype = c_void_p
 isl.isl_map_intersect_range.argtypes = [c_void_p, c_void_p]
+isl.isl_map_intersect_range_factor_domain.restype = c_void_p
+isl.isl_map_intersect_range_factor_domain.argtypes = [c_void_p, c_void_p]
+isl.isl_map_intersect_range_factor_range.restype = c_void_p
+isl.isl_map_intersect_range_factor_range.argtypes = [c_void_p, c_void_p]
 isl.isl_map_is_bijective.argtypes = [c_void_p]
 isl.isl_map_is_disjoint.argtypes = [c_void_p, c_void_p]
 isl.isl_map_is_empty.argtypes = [c_void_p]
@@ -9692,6 +9828,16 @@ class set(union_set):
         res = isl.isl_set_subtract(isl.isl_set_copy(arg0.ptr), isl.isl_set_copy(arg1.ptr))
         obj = set(ctx=ctx, ptr=res)
         return obj
+    def translation(arg0):
+        try:
+            if not arg0.__class__ is set:
+                arg0 = set(arg0)
+        except:
+            raise
+        ctx = arg0.ctx
+        res = isl.isl_set_translation(isl.isl_set_copy(arg0.ptr))
+        obj = map(ctx=ctx, ptr=res)
+        return obj
     def unbind_params(arg0, arg1):
         try:
             if not arg0.__class__ is set:
@@ -9881,6 +10027,8 @@ isl.isl_set_sample_point.restype = c_void_p
 isl.isl_set_sample_point.argtypes = [c_void_p]
 isl.isl_set_subtract.restype = c_void_p
 isl.isl_set_subtract.argtypes = [c_void_p, c_void_p]
+isl.isl_set_translation.restype = c_void_p
+isl.isl_set_translation.argtypes = [c_void_p]
 isl.isl_set_unbind_params.restype = c_void_p
 isl.isl_set_unbind_params.argtypes = [c_void_p, c_void_p]
 isl.isl_set_unbind_params_insert_domain.restype = c_void_p

@@ -1556,8 +1556,12 @@ public:
   inline isl::map gist_domain(isl::set context) const;
   inline isl::map intersect(isl::map map2) const;
   inline isl::map intersect_domain(isl::set set) const;
+  inline isl::map intersect_domain_factor_domain(isl::map factor) const;
+  inline isl::map intersect_domain_factor_range(isl::map factor) const;
   inline isl::map intersect_params(isl::set params) const;
   inline isl::map intersect_range(isl::set set) const;
+  inline isl::map intersect_range_factor_domain(isl::map factor) const;
+  inline isl::map intersect_range_factor_range(isl::map factor) const;
   inline bool is_bijective() const;
   inline bool is_disjoint(const isl::map &map2) const;
   inline bool is_empty() const;
@@ -2655,6 +2659,7 @@ public:
   inline isl::basic_set sample() const;
   inline isl::point sample_point() const;
   inline isl::set subtract(isl::set set2) const;
+  inline isl::map translation() const;
   inline isl::set unbind_params(isl::multi_id tuple) const;
   inline isl::map unbind_params_insert_domain(isl::multi_id domain) const;
   inline isl::set unite(isl::set set2) const;
@@ -2845,9 +2850,13 @@ public:
   inline isl::union_map intersect(isl::union_map umap2) const;
   inline isl::union_map intersect_domain(isl::space space) const;
   inline isl::union_map intersect_domain(isl::union_set uset) const;
+  inline isl::union_map intersect_domain_factor_domain(isl::union_map factor) const;
+  inline isl::union_map intersect_domain_factor_range(isl::union_map factor) const;
   inline isl::union_map intersect_params(isl::set set) const;
   inline isl::union_map intersect_range(isl::space space) const;
   inline isl::union_map intersect_range(isl::union_set uset) const;
+  inline isl::union_map intersect_range_factor_domain(isl::union_map factor) const;
+  inline isl::union_map intersect_range_factor_range(isl::union_map factor) const;
   inline bool is_bijective() const;
   inline bool is_disjoint(const isl::union_map &umap2) const;
   inline bool is_empty() const;
@@ -7714,6 +7723,30 @@ isl::map map::intersect_domain(isl::set set) const
   return manage(res);
 }
 
+isl::map map::intersect_domain_factor_domain(isl::map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_intersect_domain_factor_domain(copy(), factor.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::map map::intersect_domain_factor_range(isl::map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_intersect_domain_factor_range(copy(), factor.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
 isl::map map::intersect_params(isl::set params) const
 {
   if (!ptr || params.is_null())
@@ -7733,6 +7766,30 @@ isl::map map::intersect_range(isl::set set) const
   auto saved_ctx = ctx();
   options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
   auto res = isl_map_intersect_range(copy(), set.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::map map::intersect_range_factor_domain(isl::map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_intersect_range_factor_domain(copy(), factor.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::map map::intersect_range_factor_range(isl::map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_map_intersect_range_factor_range(copy(), factor.release());
   if (!res)
     exception::throw_last_error(saved_ctx);
   return manage(res);
@@ -14929,6 +14986,18 @@ isl::set set::subtract(isl::set set2) const
   return manage(res);
 }
 
+isl::map set::translation() const
+{
+  if (!ptr)
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_set_translation(copy());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
 isl::set set::unbind_params(isl::multi_id tuple) const
 {
   if (!ptr || tuple.is_null())
@@ -16204,6 +16273,30 @@ isl::union_map union_map::intersect_domain(isl::union_set uset) const
   return manage(res);
 }
 
+isl::union_map union_map::intersect_domain_factor_domain(isl::union_map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_union_map_intersect_domain_factor_domain(copy(), factor.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::union_map union_map::intersect_domain_factor_range(isl::union_map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_union_map_intersect_domain_factor_range(copy(), factor.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
 isl::union_map union_map::intersect_params(isl::set set) const
 {
   if (!ptr || set.is_null())
@@ -16235,6 +16328,30 @@ isl::union_map union_map::intersect_range(isl::union_set uset) const
   auto saved_ctx = ctx();
   options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
   auto res = isl_union_map_intersect_range_union_set(copy(), uset.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::union_map union_map::intersect_range_factor_domain(isl::union_map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_union_map_intersect_range_factor_domain(copy(), factor.release());
+  if (!res)
+    exception::throw_last_error(saved_ctx);
+  return manage(res);
+}
+
+isl::union_map union_map::intersect_range_factor_range(isl::union_map factor) const
+{
+  if (!ptr || factor.is_null())
+    exception::throw_invalid("NULL input", __FILE__, __LINE__);
+  auto saved_ctx = ctx();
+  options_scoped_set_on_error saved_on_error(saved_ctx, exception::on_error);
+  auto res = isl_union_map_intersect_range_factor_range(copy(), factor.release());
   if (!res)
     exception::throw_last_error(saved_ctx);
   return manage(res);

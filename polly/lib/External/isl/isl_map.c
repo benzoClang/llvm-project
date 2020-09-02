@@ -8373,6 +8373,21 @@ static __isl_give isl_map *isl_map_reverse_range_product(
 }
 
 /* Given a map "map" in a space [A -> B] -> C and a map "factor"
+ * in the space A -> C, return the intersection.
+ */
+__isl_give isl_map *isl_map_intersect_domain_factor_domain(
+	__isl_take isl_map *map, __isl_take isl_map *factor)
+{
+	struct isl_intersect_factor_control control = {
+		.preserve_type = isl_dim_in,
+		.other_factor = isl_space_domain_factor_range,
+		.product = isl_map_domain_product,
+	};
+
+	return isl_map_intersect_factor(map, factor, &control);
+}
+
+/* Given a map "map" in a space [A -> B] -> C and a map "factor"
  * in the space B -> C, return the intersection.
  */
 __isl_give isl_map *isl_map_intersect_domain_factor_range(
@@ -8604,6 +8619,17 @@ isl_bool isl_map_tuple_is_equal(__isl_keep isl_map *map1,
 	return isl_space_tuple_is_equal(space1, type1, space2, type2);
 }
 
+/* Is the space of "obj" equal to "space", ignoring parameters?
+ */
+isl_bool isl_map_has_space_tuples(__isl_keep isl_map *map,
+	__isl_keep isl_space *space)
+{
+	isl_space *map_space;
+
+	map_space = isl_map_peek_space(map);
+	return isl_space_has_equal_tuples(map_space, space);
+}
+
 /* Check that "map" is a transformation, i.e.,
  * that it relates elements from the same space.
  */
@@ -8705,6 +8731,20 @@ __isl_give isl_map *isl_map_deltas_map(__isl_take isl_map *map)
 
 	return isl_map_transform(map, &isl_space_range_map,
 					&isl_basic_map_deltas_map);
+}
+
+/* Return pairs of elements { x -> y } such that y - x is in "deltas".
+ */
+__isl_give isl_map *isl_set_translation(__isl_take isl_set *deltas)
+{
+	isl_space *space;
+	isl_map *map;
+
+	space = isl_space_map_from_set(isl_set_get_space(deltas));
+	map = isl_map_deltas_map(isl_map_universe(space));
+	map = isl_map_intersect_range(map, deltas);
+
+	return isl_set_unwrap(isl_map_domain(map));
 }
 
 __isl_give isl_basic_map *isl_basic_map_identity(__isl_take isl_space *space)
@@ -9022,6 +9062,7 @@ isl_stat isl_basic_set_check_equal_space(__isl_keep isl_basic_set *bset1,
 
 #include "isl_type_has_equal_space_bin_templ.c"
 #include "isl_type_check_equal_space_templ.c"
+#include "isl_type_has_space_templ.c"
 
 isl_bool isl_set_has_equal_space(__isl_keep isl_set *set1,
 	__isl_keep isl_set *set2)
