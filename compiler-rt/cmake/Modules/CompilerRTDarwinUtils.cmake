@@ -2,7 +2,7 @@ include(CMakeParseArguments)
 include(CompilerRTUtils)
 include(BuiltinTests)
 
-set(CMAKE_LIPO "lipo" CACHE PATH "path to the lipo tool")
+#set(CMAKE_LIPO "lipo" CACHE PATH "path to the lipo tool")
 
 # On OS X SDKs can be installed anywhere on the base system and xcode-select can
 # set the default Xcode to use. This function finds the SDKs that are present in

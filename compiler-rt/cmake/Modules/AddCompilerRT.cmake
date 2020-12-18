@@ -595,6 +595,7 @@ macro(add_custom_libcxx name prefix)
     CMAKE_INSTALL_PREFIX
     CMAKE_MAKE_PROGRAM
     CMAKE_LINKER
+    CMAKE_LIPO
     CMAKE_AR
     CMAKE_RANLIB
     CMAKE_NM
