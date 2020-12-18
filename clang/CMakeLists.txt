@@ -746,6 +746,11 @@ if (CLANG_ENABLE_BOOTSTRAP)
     set(PGO_OPT -DLLVM_PROFDATA=${LLVM_RUNTIME_OUTPUT_INTDIR}/llvm-profdata)
   endif()
 
+  # Retain lipo configuration as needed
+  if(APPLE)
+    set(CMAKE_LIPO "lipo" CACHE FILEPATH "path to the lipo tool")
+  endif()
+
   if(LLVM_BUILD_INSTRUMENTED)
     add_dependencies(clang-bootstrap-deps generate-profdata)
     set(PGO_OPT -DLLVM_PROFDATA_FILE=${CMAKE_CURRENT_BINARY_DIR}/utils/perf-training/clang.profdata)
