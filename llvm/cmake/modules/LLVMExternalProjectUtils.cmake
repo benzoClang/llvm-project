@@ -247,6 +247,7 @@ function(llvm_ExternalProject_Add name source_dir)
                       -DCMAKE_LINKER=${CMAKE_LINKER}
                       -DCMAKE_AR=${CMAKE_AR}
                       -DCMAKE_RANLIB=${CMAKE_RANLIB}
+                      -DCMAKE_LIPO=${CMAKE_LIPO}
                       -DCMAKE_NM=${CMAKE_NM}
                       -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY}
                       -DCMAKE_OBJDUMP=${CMAKE_OBJDUMP}
