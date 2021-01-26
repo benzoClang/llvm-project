@@ -2154,6 +2154,10 @@ template <class ELFT> void LinkerDriver::link(opt::InputArgList &args) {
   // They also might be exported if referenced by DSOs.
   script->declareSymbols();
 
+  // Handle undefined symbols in DSOs.
+  if (!config->shared)
+    symtab->scanShlibUndefined<ELFT>();
+
   // Handle --exclude-libs. This is before scanVersionScript() due to a
   // workaround for Android ndk: for a defined versioned symbol in an archive
   // without a version node in the version script, Android does not expect a
