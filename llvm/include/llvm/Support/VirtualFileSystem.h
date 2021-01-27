@@ -34,6 +34,9 @@
 #include <utility>
 #include <vector>
 
+// ANDROID x86_64 defined the FS macro
+#undef FS
+
 namespace llvm {
 
 class MemoryBuffer;
