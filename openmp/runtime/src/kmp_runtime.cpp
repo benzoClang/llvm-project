@@ -6445,7 +6445,7 @@ void __kmp_register_library_startup(void) {
 
     char *value = NULL; // Actual value of the environment variable.
 
-#if KMP_OS_UNIX && KMP_DYNAMIC_LIB // shared memory is with dynamic library
+#if KMP_OS_UNIX && KMP_DYNAMIC_LIB && !__ANDROID__ // shared memory is with dynamic library
     char *shm_name = __kmp_str_format("/%s", name);
     int shm_preexist = 0;
     char *data1;
@@ -6550,7 +6550,7 @@ void __kmp_register_library_startup(void) {
       } break;
       case 2: { // Neighbor is dead.
 
-#if KMP_OS_UNIX && KMP_DYNAMIC_LIB // shared memory is with dynamic library
+#if KMP_OS_UNIX && KMP_DYNAMIC_LIB && !__ANDROID__ // shared memory is with dynamic library
         // close shared memory.
         shm_unlink(shm_name); // this removes file in /dev/shm
 #else
@@ -6562,7 +6562,7 @@ void __kmp_register_library_startup(void) {
       }
     }
     KMP_INTERNAL_FREE((void *)value);
-#if KMP_OS_UNIX && KMP_DYNAMIC_LIB // shared memory is with dynamic library
+#if KMP_OS_UNIX && KMP_DYNAMIC_LIB && !__ANDROID__ // shared memory is with dynamic library
     KMP_INTERNAL_FREE((void *)shm_name);
 #endif
   } // while
@@ -6575,7 +6575,7 @@ void __kmp_unregister_library(void) {
   char *name = __kmp_reg_status_name();
   char *value = NULL;
 
-#if KMP_OS_UNIX && KMP_DYNAMIC_LIB // shared memory is with dynamic library
+#if KMP_OS_UNIX && KMP_DYNAMIC_LIB && !__ANDROID__ // shared memory is with dynamic library
   char *shm_name = __kmp_str_format("/%s", name);
   int fd1 = shm_open(shm_name, O_RDONLY, 0666);
   if (fd1 == -1) {
@@ -6596,14 +6596,14 @@ void __kmp_unregister_library(void) {
   KMP_DEBUG_ASSERT(__kmp_registration_str != NULL);
   if (value != NULL && strcmp(value, __kmp_registration_str) == 0) {
 //  Ok, this is our variable. Delete it.
-#if KMP_OS_UNIX && KMP_DYNAMIC_LIB // shared memory is with dynamic library
+#if KMP_OS_UNIX && KMP_DYNAMIC_LIB && !__ANDROID__ // shared memory is with dynamic library
     shm_unlink(shm_name); // this removes file in /dev/shm
 #else
     __kmp_env_unset(name);
 #endif
   }
 
-#if KMP_OS_UNIX && KMP_DYNAMIC_LIB // shared memory is with dynamic library
+#if KMP_OS_UNIX && KMP_DYNAMIC_LIB && !__ANDROID__ // shared memory is with dynamic library
   KMP_INTERNAL_FREE(shm_name);
 #endif
 
