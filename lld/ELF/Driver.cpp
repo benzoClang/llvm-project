@@ -2158,11 +2158,7 @@ template <class ELFT> void LinkerDriver::link(opt::InputArgList &args) {
   if (!config->shared)
     symtab->scanShlibUndefined<ELFT>();
 
-  // Handle --exclude-libs. This is before scanVersionScript() due to a
-  // workaround for Android ndk: for a defined versioned symbol in an archive
-  // without a version node in the version script, Android does not expect a
-  // 'has undefined version' error in -shared --exclude-libs=ALL mode (PR36295).
-  // GNU ld errors in this case.
+  // Handle the -exclude-libs option.
   if (args.hasArg(OPT_exclude_libs))
     excludeLibs(args);
 
@@ -2194,12 +2190,6 @@ template <class ELFT> void LinkerDriver::link(opt::InputArgList &args) {
   // With this the symbol table should be complete. After this, no new names
   // except a few linker-synthesized ones will be added to the symbol table.
   compileBitcodeFiles<ELFT>();
-
-  // Handle --exclude-libs again because lto.tmp may reference additional
-  // libcalls symbols defined in an excluded archive. This may override
-  // versionId set by scanVersionScript().
-  if (args.hasArg(OPT_exclude_libs))
-    excludeLibs(args);
 
   // Symbol resolution finished. Report backward reference problems.
   reportBackrefs();
