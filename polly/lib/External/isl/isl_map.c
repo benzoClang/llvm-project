@@ -742,6 +742,22 @@ __isl_give isl_map *isl_map_set_tuple_id(__isl_take isl_map *map,
 	return isl_map_reset_space(map, isl_map_get_space(map));
 }
 
+/* Replace the identifier of the domain tuple of "map" by "id".
+ */
+__isl_give isl_map *isl_map_set_domain_tuple_id(__isl_take isl_map *map,
+	__isl_take isl_id *id)
+{
+	return isl_map_set_tuple_id(map, isl_dim_in, id);
+}
+
+/* Replace the identifier of the range tuple of "map" by "id".
+ */
+__isl_give isl_map *isl_map_set_range_tuple_id(__isl_take isl_map *map,
+	__isl_take isl_id *id)
+{
+	return isl_map_set_tuple_id(map, isl_dim_out, id);
+}
+
 __isl_give isl_set *isl_set_set_tuple_id(__isl_take isl_set *set,
 	__isl_take isl_id *id)
 {
@@ -770,10 +786,38 @@ isl_bool isl_map_has_tuple_id(__isl_keep isl_map *map, enum isl_dim_type type)
 	return map ? isl_space_has_tuple_id(map->dim, type) : isl_bool_error;
 }
 
+/* Does the domain tuple of "map" have an identifier?
+ */
+isl_bool isl_map_has_domain_tuple_id(__isl_keep isl_map *map)
+{
+	return isl_map_has_tuple_id(map, isl_dim_in);
+}
+
+/* Does the range tuple of "map" have an identifier?
+ */
+isl_bool isl_map_has_range_tuple_id(__isl_keep isl_map *map)
+{
+	return isl_map_has_tuple_id(map, isl_dim_out);
+}
+
 __isl_give isl_id *isl_map_get_tuple_id(__isl_keep isl_map *map,
 	enum isl_dim_type type)
 {
 	return map ? isl_space_get_tuple_id(map->dim, type) : NULL;
+}
+
+/* Return the identifier of the domain tuple of "map", assuming it has one.
+ */
+__isl_give isl_id *isl_map_get_domain_tuple_id(__isl_keep isl_map *map)
+{
+	return isl_map_get_tuple_id(map, isl_dim_in);
+}
+
+/* Return the identifier of the range tuple of "map", assuming it has one.
+ */
+__isl_give isl_id *isl_map_get_range_tuple_id(__isl_keep isl_map *map)
+{
+	return isl_map_get_tuple_id(map, isl_dim_out);
 }
 
 isl_bool isl_set_has_tuple_id(__isl_keep isl_set *set)
@@ -2103,19 +2147,22 @@ error:
  * Since the basic map has conflicting constraints,
  * it must have at least one constraint, except perhaps
  * if it was already explicitly marked as being empty.
- * Do nothing in the latter case.
+ * Do nothing in the latter case, i.e., if it has been marked empty and
+ * has no constraints.
  */
 __isl_give isl_basic_map *isl_basic_map_set_to_empty(
 	__isl_take isl_basic_map *bmap)
 {
 	int i = 0;
 	isl_bool empty;
+	isl_size n;
 	isl_size total;
 
+	n = isl_basic_map_n_constraint(bmap);
 	empty = isl_basic_map_plain_is_empty(bmap);
-	if (empty < 0)
+	if (n < 0 || empty < 0)
 		return isl_basic_map_free(bmap);
-	if (empty)
+	if (n == 0 && empty)
 		return bmap;
 	total = isl_basic_map_dim(bmap, isl_dim_all);
 	if (total < 0)
@@ -3421,6 +3468,14 @@ __isl_give isl_set *isl_set_grow(__isl_take isl_set *set, int n)
 __isl_give isl_set *isl_set_from_basic_set(__isl_take isl_basic_set *bset)
 {
 	return isl_map_from_basic_map(bset);
+}
+
+/* This function performs the same operation as isl_set_from_basic_set,
+ * but is considered as a function on an isl_basic_set when exported.
+ */
+__isl_give isl_set *isl_basic_set_to_set(__isl_take isl_basic_set *bset)
+{
+	return isl_set_from_basic_set(bset);
 }
 
 __isl_give isl_map *isl_map_from_basic_map(__isl_take isl_basic_map *bmap)
@@ -6277,6 +6332,14 @@ __isl_give isl_map *isl_map_universe(__isl_take isl_space *space)
 	return map;
 }
 
+/* This function performs the same operation as isl_map_universe,
+ * but is considered as a function on an isl_space when exported.
+ */
+__isl_give isl_map *isl_space_universe_map(__isl_take isl_space *space)
+{
+	return isl_map_universe(space);
+}
+
 __isl_give isl_set *isl_set_universe(__isl_take isl_space *space)
 {
 	struct isl_set *set;
@@ -6285,6 +6348,14 @@ __isl_give isl_set *isl_set_universe(__isl_take isl_space *space)
 	set = isl_set_alloc_space(isl_space_copy(space), 1, ISL_MAP_DISJOINT);
 	set = isl_set_add_basic_set(set, isl_basic_set_universe(space));
 	return set;
+}
+
+/* This function performs the same operation as isl_set_universe,
+ * but is considered as a function on an isl_space when exported.
+ */
+__isl_give isl_set *isl_space_universe_set(__isl_take isl_space *space)
+{
+	return isl_set_universe(space);
 }
 
 __isl_give isl_map *isl_map_dup(__isl_keep isl_map *map)

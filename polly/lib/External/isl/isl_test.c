@@ -7833,6 +7833,15 @@ struct isl_vertices_test_data {
 		"[n, m] -> { [1, 1, m] : 0 < m <= n }",
 		"[n, m] -> { [1, 1, 1] : 0 < m <= n }"
 	    } },
+	/* An input with implicit equality constraints among the parameters. */
+	{ "[N, M] -> { [a, b] : M >= 3 and 9 + 3M <= a <= 29 + 2N + 11M and "
+			    "2b >= M + a and 5 - 2N - M + a <= 2b <= 3 + a and "
+			    "3b >= 15 + a }",
+	  2, {
+		"[N, M] -> { [(21), (12)] : M = 3 and N >= 0 }",
+		"[N, M] -> { [(61 + 2N), (32 + N)] : M = 3 and N >= 0 }",
+	     }
+	},
 };
 
 /* Check that "vertex" corresponds to one of the vertices in data->vertex.
@@ -8689,6 +8698,34 @@ int test_sample(isl_ctx *ctx)
 		isl_die(ctx, isl_error_unknown, "point not found", return -1);
 	if (!subset)
 		isl_die(ctx, isl_error_unknown, "bad point found", return -1);
+
+	return 0;
+}
+
+/* Perform a projection on a basic set that is known to be empty
+ * but that has not been assigned a canonical representation.
+ * Earlier versions of isl would run into a stack overflow
+ * on this example.
+ */
+static int test_empty_projection(isl_ctx *ctx)
+{
+	const char *str;
+	isl_bool empty;
+	isl_basic_set *bset;
+
+	str = "{ [a, b, c, d, e, f, g, h] : 5f = 1 + 4a - b + 5c - d - 2e and "
+		"3h = 2 + b + c and 14c >= 9 - 3a + 25b and "
+		"4c <= 50 - 3a + 23b and 6b <= -39 + a and "
+		"9g >= -6 + 3a + b + c and e < a + b - 2d and "
+		"7d >= -5 + 2a + 2b and 5g >= -14 + a - 4b + d + 2e and "
+		"9g <= -28 - 5b - 2c + 3d + 6e }";
+	bset = isl_basic_set_read_from_str(ctx, str);
+	empty = isl_basic_set_is_empty(bset);
+	bset = isl_basic_set_params(bset);
+	isl_basic_set_free(bset);
+
+	if (empty < 0)
+		return -1;
 
 	return 0;
 }
@@ -10825,6 +10862,7 @@ struct {
 	{ "slice", &test_slice },
 	{ "fixed power", &test_fixed_power },
 	{ "sample", &test_sample },
+	{ "empty projection", &test_empty_projection },
 	{ "output", &test_output },
 	{ "vertices", &test_vertices },
 	{ "chambers", &test_chambers },
