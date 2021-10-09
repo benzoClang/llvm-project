@@ -3829,14 +3829,6 @@ def ReleaseHandle : InheritableParamAttr {
   let Documentation = [ReleaseHandleDocs];
 }
 
-def Builtin : InheritableAttr {
-  let Spellings = [];
-  let Args = [UnsignedArgument<"ID">];
-  let Subjects = SubjectList<[Function]>;
-  let SemaHandler = 0;
-  let Documentation = [Undocumented];
-}
-
 def EnforceTCB : InheritableAttr {
   let Spellings = [Clang<"enforce_tcb">];
   let Subjects = SubjectList<[Function]>;

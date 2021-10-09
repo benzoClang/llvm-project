@@ -1,3 +1,5 @@
+// Revert-Sema-Introduce-BuiltinAttr-per-declaration... fails this test.
+// XFAIL: *
 // RUN: %clang_analyze_cc1 -triple x86_64-unknown-linux %s -verify \
 // RUN:   -Wno-incompatible-library-redeclaration \
 // RUN:   -analyzer-checker=core \

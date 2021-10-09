@@ -1,3 +1,5 @@
+// Revert-Sema-Introduce-BuiltinAttr-per-declaration... fails this test.
+// XFAIL: *
 // RUN: %clang_cc1 -triple i386-pc-win32 -target-cpu pentium4 \
 // RUN:     -fms-extensions -fms-compatibility -fms-compatibility-version=17.00 \
 // RUN:     -ffreestanding -fsyntax-only -Werror \

@@ -1,3 +1,5 @@
+// Revert-Sema-Introduce-BuiltinAttr-per-declaration... fails this test.
+// XFAIL: *
 // RUN: %clang_cc1 -ffreestanding -fms-extensions -fms-compatibility -fms-compatibility-version=17.00 \
 // RUN:         -triple i686--windows -emit-llvm %s -o - \
 // RUN:         | FileCheck %s

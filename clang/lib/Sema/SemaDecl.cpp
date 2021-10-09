@@ -2109,43 +2109,6 @@ static StringRef getHeaderName(Builtin::Context &BuiltinInfo, unsigned ID,
   llvm_unreachable("unhandled error kind");
 }
 
-FunctionDecl *Sema::CreateBuiltin(IdentifierInfo *II, QualType Type,
-                                  unsigned ID, SourceLocation Loc) {
-  DeclContext *Parent = Context.getTranslationUnitDecl();
-
-  if (getLangOpts().CPlusPlus) {
-    LinkageSpecDecl *CLinkageDecl = LinkageSpecDecl::Create(
-        Context, Parent, Loc, Loc, LinkageSpecDecl::lang_c, false);
-    CLinkageDecl->setImplicit();
-    Parent->addDecl(CLinkageDecl);
-    Parent = CLinkageDecl;
-  }
-
-  FunctionDecl *New = FunctionDecl::Create(Context, Parent, Loc, Loc, II, Type,
-                                           /*TInfo=*/nullptr, SC_Extern,
-                                           getCurFPFeatures().isFPConstrained(),
-                                           false, Type->isFunctionProtoType());
-  New->setImplicit();
-  New->addAttr(BuiltinAttr::CreateImplicit(Context, ID));
-
-  // Create Decl objects for each parameter, adding them to the
-  // FunctionDecl.
-  if (const FunctionProtoType *FT = dyn_cast<FunctionProtoType>(Type)) {
-    SmallVector<ParmVarDecl *, 16> Params;
-    for (unsigned i = 0, e = FT->getNumParams(); i != e; ++i) {
-      ParmVarDecl *parm = ParmVarDecl::Create(
-          Context, New, SourceLocation(), SourceLocation(), nullptr,
-          FT->getParamType(i), /*TInfo=*/nullptr, SC_None, nullptr);
-      parm->setScopeInfo(0, i);
-      Params.push_back(parm);
-    }
-    New->setParams(Params);
-  }
-
-  AddKnownFunctionAttributes(New);
-  return New;
-}
-
 /// LazilyCreateBuiltin - The specified Builtin-ID was first used at
 /// file scope.  lazily create a decl for it. ForRedeclaration is true
 /// if we're creating this built-in in anticipation of redeclaring the
@@ -2196,7 +2159,40 @@ NamedDecl *Sema::LazilyCreateBuiltin(IdentifierInfo *II, unsigned ID,
   if (R.isNull())
     return nullptr;
 
-  FunctionDecl *New = CreateBuiltin(II, R, ID, Loc);
+  DeclContext *Parent = Context.getTranslationUnitDecl();
+  if (getLangOpts().CPlusPlus) {
+    LinkageSpecDecl *CLinkageDecl =
+        LinkageSpecDecl::Create(Context, Parent, Loc, Loc,
+                                LinkageSpecDecl::lang_c, false);
+    CLinkageDecl->setImplicit();
+    Parent->addDecl(CLinkageDecl);
+    Parent = CLinkageDecl;
+  }
+
+  FunctionDecl *New = FunctionDecl::Create(Context,
+                                           Parent,
+                                           Loc, Loc, II, R, /*TInfo=*/nullptr,
+                                           SC_Extern,
+                                           false,
+                                           R->isFunctionProtoType());
+  New->setImplicit();
+
+  // Create Decl objects for each parameter, adding them to the
+  // FunctionDecl.
+  if (const FunctionProtoType *FT = dyn_cast<FunctionProtoType>(R)) {
+    SmallVector<ParmVarDecl*, 16> Params;
+    for (unsigned i = 0, e = FT->getNumParams(); i != e; ++i) {
+      ParmVarDecl *parm =
+          ParmVarDecl::Create(Context, New, SourceLocation(), SourceLocation(),
+                              nullptr, FT->getParamType(i), /*TInfo=*/nullptr,
+                              SC_None, nullptr);
+      parm->setScopeInfo(0, i);
+      Params.push_back(parm);
+    }
+    New->setParams(Params);
+  }
+
+  AddKnownFunctionAttributes(New);
   RegisterLocallyScopedExternCDecl(New, S);
 
   // TUScope is the translation-unit scope to insert this function into.
@@ -2204,7 +2200,7 @@ NamedDecl *Sema::LazilyCreateBuiltin(IdentifierInfo *II, unsigned ID,
   // relate Scopes to DeclContexts, and probably eliminate CurContext
   // entirely, but we're not there yet.
   DeclContext *SavedContext = CurContext;
-  CurContext = New->getDeclContext();
+  CurContext = Parent;
   PushOnScopeChains(New, TUScope);
   CurContext = SavedContext;
   return New;
@@ -3451,10 +3447,7 @@ bool Sema::MergeFunctionDecl(FunctionDecl *New, NamedDecl *&OldD,
       // there but not here.
       NewTypeInfo = NewTypeInfo.withCallingConv(OldTypeInfo.getCC());
       RequiresAdjustment = true;
-    } else if (Old->getBuiltinID()) {
-      // Builtin attribute isn't propagated to the new one yet at this point,
-      // so we check if the old one is a builtin.
-
+    } else if (New->getBuiltinID()) {
       // Calling Conventions on a Builtin aren't really useful and setting a
       // default calling convention and cdecl'ing some builtin redeclarations is
       // common, so warn and ignore the calling convention on the redeclaration.
@@ -3887,6 +3880,18 @@ bool Sema::MergeFunctionDecl(FunctionDecl *New, NamedDecl *&OldD,
       Diag(New->getLocation(), diag::warn_redecl_library_builtin) << New;
       Diag(OldLocation, diag::note_previous_builtin_declaration)
         << Old << Old->getType();
+
+      // If this is a global redeclaration, just forget hereafter
+      // about the "builtin-ness" of the function.
+      //
+      // Doing this for local extern declarations is problematic.  If
+      // the builtin declaration remains visible, a second invalid
+      // local declaration will produce a hard error; if it doesn't
+      // remain visible, a single bogus local redeclaration (which is
+      // actually only a warning) could break all the downstream code.
+      if (!New->getLexicalDeclContext()->isFunctionOrMethod())
+        New->getIdentifier()->revertBuiltin();
+
       return false;
     }
 
@@ -9859,36 +9864,6 @@ Sema::ActOnFunctionDeclarator(Scope *S, Declarator &D, DeclContext *DC,
       // generate them.
       Diag(NewFD->getLocation(), diag::ext_out_of_line_declaration)
         << D.getCXXScopeSpec().getRange();
-    }
-  }
-
-  // If this is the first declaration of a library builtin function, add
-  // attributes as appropriate.
-  if (!D.isRedeclaration() &&
-      NewFD->getDeclContext()->getRedeclContext()->isFileContext()) {
-    if (IdentifierInfo *II = Previous.getLookupName().getAsIdentifierInfo()) {
-      if (unsigned BuiltinID = II->getBuiltinID()) {
-        if (NewFD->getLanguageLinkage() == CLanguageLinkage) {
-          // Validate the type matches unless this builtin is specified as
-          // matching regardless of its declared type.
-          if (Context.BuiltinInfo.allowTypeMismatch(BuiltinID)) {
-            NewFD->addAttr(BuiltinAttr::CreateImplicit(Context, BuiltinID));
-          } else {
-            ASTContext::GetBuiltinTypeError Error;
-            LookupNecessaryTypesForBuiltin(S, BuiltinID);
-            QualType BuiltinType = Context.GetBuiltinType(BuiltinID, Error);
-
-            if (!Error && !BuiltinType.isNull() &&
-                Context.hasSameFunctionTypeIgnoringExceptionSpec(
-                    NewFD->getType(), BuiltinType))
-              NewFD->addAttr(BuiltinAttr::CreateImplicit(Context, BuiltinID));
-          }
-        } else if (BuiltinID == Builtin::BI__GetExceptionInfo &&
-                   Context.getTargetInfo().getCXXABI().isMicrosoft()) {
-          // FIXME: We should consider this a builtin only in the std namespace.
-          NewFD->addAttr(BuiltinAttr::CreateImplicit(Context, BuiltinID));
-        }
-      }
     }
   }
 

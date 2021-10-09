@@ -936,9 +936,10 @@ bool Sema::LookupBuiltin(LookupResult &R) {
             Context.BuiltinInfo.isPredefinedLibFunction(BuiltinID))
           return false;
 
-        if (NamedDecl *D =
-                LazilyCreateBuiltin(II, BuiltinID, TUScope,
-                                    R.isForRedeclaration(), R.getNameLoc())) {
+        if (NamedDecl *D = LazilyCreateBuiltin((IdentifierInfo *)II,
+                                               BuiltinID, TUScope,
+                                               R.isForRedeclaration(),
+                                               R.getNameLoc())) {
           R.addDecl(D);
           return true;
         }

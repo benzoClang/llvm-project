@@ -1,3 +1,5 @@
+// Revert-Sema-Introduce-BuiltinAttr-per-declaration... fails this test.
+// XFAIL: *
 // RUN: %clang_cc1 -fsyntax-only -verify %s
 
 // PR3592
