@@ -2590,12 +2590,10 @@ isl_bool isl_aff_involves_locals(__isl_keep isl_aff *aff)
 __isl_give isl_aff *isl_aff_drop_dims(__isl_take isl_aff *aff,
 	enum isl_dim_type type, unsigned first, unsigned n)
 {
-	isl_ctx *ctx;
-
 	if (!aff)
 		return NULL;
 	if (type == isl_dim_out)
-		isl_die(aff->v->ctx, isl_error_invalid,
+		isl_die(isl_aff_get_ctx(aff), isl_error_invalid,
 			"cannot drop output/set dimension",
 			return isl_aff_free(aff));
 	if (type == isl_dim_in)
@@ -2603,7 +2601,6 @@ __isl_give isl_aff *isl_aff_drop_dims(__isl_take isl_aff *aff,
 	if (n == 0 && !isl_local_space_is_named_or_nested(aff->ls, type))
 		return aff;
 
-	ctx = isl_aff_get_ctx(aff);
 	if (isl_local_space_check_range(aff->ls, type, first, n) < 0)
 		return isl_aff_free(aff);
 
@@ -2669,12 +2666,10 @@ __isl_give isl_aff *isl_aff_from_range(__isl_take isl_aff *aff)
 __isl_give isl_aff *isl_aff_insert_dims(__isl_take isl_aff *aff,
 	enum isl_dim_type type, unsigned first, unsigned n)
 {
-	isl_ctx *ctx;
-
 	if (!aff)
 		return NULL;
 	if (type == isl_dim_out)
-		isl_die(aff->v->ctx, isl_error_invalid,
+		isl_die(isl_aff_get_ctx(aff), isl_error_invalid,
 			"cannot insert output/set dimensions",
 			return isl_aff_free(aff));
 	if (type == isl_dim_in)
@@ -2682,7 +2677,6 @@ __isl_give isl_aff *isl_aff_insert_dims(__isl_take isl_aff *aff,
 	if (n == 0 && !isl_local_space_is_named_or_nested(aff->ls, type))
 		return aff;
 
-	ctx = isl_aff_get_ctx(aff);
 	if (isl_local_space_check_range(aff->ls, type, first, 0) < 0)
 		return isl_aff_free(aff);
 
@@ -2806,6 +2800,7 @@ static __isl_give isl_aff *isl_aff_zero_in_space(__isl_take isl_space *space)
 #define DEFAULT_IS_ZERO 0
 
 #include <isl_pw_templ.c>
+#include <isl_pw_un_op_templ.c>
 #include <isl_pw_add_constant_val_templ.c>
 #include <isl_pw_bind_domain_templ.c>
 #include <isl_pw_eval.c>
@@ -3289,40 +3284,12 @@ __isl_give isl_pw_aff *isl_pw_aff_scale_down(__isl_take isl_pw_aff *pwaff,
 
 __isl_give isl_pw_aff *isl_pw_aff_floor(__isl_take isl_pw_aff *pwaff)
 {
-	int i;
-
-	pwaff = isl_pw_aff_cow(pwaff);
-	if (!pwaff)
-		return NULL;
-	if (pwaff->n == 0)
-		return pwaff;
-
-	for (i = 0; i < pwaff->n; ++i) {
-		pwaff->p[i].aff = isl_aff_floor(pwaff->p[i].aff);
-		if (!pwaff->p[i].aff)
-			return isl_pw_aff_free(pwaff);
-	}
-
-	return pwaff;
+	return isl_pw_aff_un_op(pwaff, &isl_aff_floor);
 }
 
 __isl_give isl_pw_aff *isl_pw_aff_ceil(__isl_take isl_pw_aff *pwaff)
 {
-	int i;
-
-	pwaff = isl_pw_aff_cow(pwaff);
-	if (!pwaff)
-		return NULL;
-	if (pwaff->n == 0)
-		return pwaff;
-
-	for (i = 0; i < pwaff->n; ++i) {
-		pwaff->p[i].aff = isl_aff_ceil(pwaff->p[i].aff);
-		if (!pwaff->p[i].aff)
-			return isl_pw_aff_free(pwaff);
-	}
-
-	return pwaff;
+	return isl_pw_aff_un_op(pwaff, &isl_aff_ceil);
 }
 
 /* Assuming that "cond1" and "cond2" are disjoint,
@@ -3900,6 +3867,8 @@ static __isl_give isl_basic_set *isl_multi_aff_domain(
 
 #include <isl_multi_no_explicit_domain.c>
 #include <isl_multi_templ.c>
+#include <isl_multi_un_op_templ.c>
+#include <isl_multi_bin_val_templ.c>
 #include <isl_multi_add_constant_templ.c>
 #include <isl_multi_apply_set.c>
 #include <isl_multi_arith_templ.c>
@@ -4302,17 +4271,20 @@ __isl_give isl_pw_multi_aff *isl_space_identity_pw_multi_aff_on_domain(
 static __isl_give isl_multi_aff *isl_multi_aff_substitute_equalities(
 	__isl_take isl_multi_aff *maff, __isl_take isl_basic_set *eq)
 {
+	isl_size n;
 	int i;
 
-	maff = isl_multi_aff_cow(maff);
-	if (!maff || !eq)
+	n = isl_multi_aff_size(maff);
+	if (n < 0 || !eq)
 		goto error;
 
-	for (i = 0; i < maff->n; ++i) {
-		maff->u.p[i] = isl_aff_substitute_equalities(maff->u.p[i],
+	for (i = 0; i < n; ++i) {
+		isl_aff *aff;
+
+		aff = isl_multi_aff_take_at(maff, i);
+		aff = isl_aff_substitute_equalities(aff,
 						    isl_basic_set_copy(eq));
-		if (!maff->u.p[i])
-			goto error;
+		maff = isl_multi_aff_restore_at(maff, i, aff);
 	}
 
 	isl_basic_set_free(eq);
@@ -4326,16 +4298,19 @@ error:
 __isl_give isl_multi_aff *isl_multi_aff_scale(__isl_take isl_multi_aff *maff,
 	isl_int f)
 {
+	isl_size n;
 	int i;
 
-	maff = isl_multi_aff_cow(maff);
-	if (!maff)
-		return NULL;
+	n = isl_multi_aff_size(maff);
+	if (n < 0)
+		return isl_multi_aff_free(maff);
 
-	for (i = 0; i < maff->n; ++i) {
-		maff->u.p[i] = isl_aff_scale(maff->u.p[i], f);
-		if (!maff->u.p[i])
-			return isl_multi_aff_free(maff);
+	for (i = 0; i < n; ++i) {
+		isl_aff *aff;
+
+		aff = isl_multi_aff_take_at(maff, i);
+		aff = isl_aff_scale(aff, f);
+		maff = isl_multi_aff_restore_at(maff, i, aff);
 	}
 
 	return maff;
@@ -4513,6 +4488,7 @@ __isl_give isl_set *isl_multi_aff_lex_gt_set(__isl_take isl_multi_aff *ma1,
 #define DEFAULT_IS_ZERO 0
 
 #include <isl_pw_templ.c>
+#include <isl_pw_un_op_templ.c>
 #include <isl_pw_add_constant_multi_val_templ.c>
 #include <isl_pw_add_constant_val_templ.c>
 #include <isl_pw_bind_domain_templ.c>
@@ -5710,20 +5686,22 @@ __isl_give isl_multi_aff *isl_multi_aff_substitute(
 	__isl_take isl_multi_aff *maff, enum isl_dim_type type, unsigned pos,
 	__isl_keep isl_aff *subs)
 {
+	isl_size n;
 	int i;
 
-	maff = isl_multi_aff_cow(maff);
-	if (!maff || !subs)
+	n = isl_multi_aff_size(maff);
+	if (n < 0 || !subs)
 		return isl_multi_aff_free(maff);
 
 	if (type == isl_dim_in)
 		type = isl_dim_set;
 
-	for (i = 0; i < maff->n; ++i) {
-		maff->u.p[i] = isl_aff_substitute(maff->u.p[i],
-						type, pos, subs);
-		if (!maff->u.p[i])
-			return isl_multi_aff_free(maff);
+	for (i = 0; i < n; ++i) {
+		isl_aff *aff;
+
+		aff = isl_multi_aff_take_at(maff, i);
+		aff = isl_aff_substitute(aff, type, pos, subs);
+		maff = isl_multi_aff_restore_at(maff, i, aff);
 	}
 
 	return maff;
@@ -5988,22 +5966,24 @@ __isl_give isl_multi_aff *isl_multi_aff_pullback_multi_aff(
 	__isl_take isl_multi_aff *ma1, __isl_take isl_multi_aff *ma2)
 {
 	int i;
+	isl_size n;
 	isl_space *space = NULL;
 
 	isl_multi_aff_align_params_bin(&ma1, &ma2);
 	ma2 = isl_multi_aff_align_divs(ma2);
-	ma1 = isl_multi_aff_cow(ma1);
-	if (!ma1 || !ma2)
+	n = isl_multi_aff_size(ma1);
+	if (n < 0 || !ma2)
 		goto error;
 
 	space = isl_space_join(isl_multi_aff_get_space(ma2),
 				isl_multi_aff_get_space(ma1));
 
-	for (i = 0; i < ma1->n; ++i) {
-		ma1->u.p[i] = isl_aff_pullback_multi_aff(ma1->u.p[i],
-						    isl_multi_aff_copy(ma2));
-		if (!ma1->u.p[i])
-			goto error;
+	for (i = 0; i < n; ++i) {
+		isl_aff *aff;
+
+		aff = isl_multi_aff_take_at(ma1, i);
+		aff = isl_aff_pullback_multi_aff(aff, isl_multi_aff_copy(ma2));
+		ma1 = isl_multi_aff_restore_at(ma1, i, aff);
 	}
 
 	ma1 = isl_multi_aff_reset_space(ma1, space);
@@ -6076,22 +6056,32 @@ error:
 __isl_give isl_multi_aff *isl_multi_aff_align_divs(
 	__isl_take isl_multi_aff *maff)
 {
+	isl_aff *aff_0;
+	isl_size n;
 	int i;
 
-	if (!maff)
-		return NULL;
-	if (maff->n == 0)
+	n = isl_multi_aff_size(maff);
+	if (n < 0)
+		return isl_multi_aff_free(maff);
+	if (n <= 1)
 		return maff;
-	maff = isl_multi_aff_cow(maff);
-	if (!maff)
-		return NULL;
 
-	for (i = 1; i < maff->n; ++i)
-		maff->u.p[0] = isl_aff_align_divs(maff->u.p[0], maff->u.p[i]);
-	for (i = 1; i < maff->n; ++i) {
-		maff->u.p[i] = isl_aff_align_divs(maff->u.p[i], maff->u.p[0]);
-		if (!maff->u.p[i])
-			return isl_multi_aff_free(maff);
+	aff_0 = isl_multi_aff_take_at(maff, 0);
+	for (i = 1; i < n; ++i) {
+		isl_aff *aff_i;
+
+		aff_i = isl_multi_aff_peek_at(maff, i);
+		aff_0 = isl_aff_align_divs(aff_0, aff_i);
+	}
+	maff = isl_multi_aff_restore_at(maff, 0, aff_0);
+
+	aff_0 = isl_multi_aff_peek_at(maff, 0);
+	for (i = 1; i < n; ++i) {
+		isl_aff *aff_i;
+
+		aff_i = isl_multi_aff_take_at(maff, i);
+		aff_i = isl_aff_align_divs(aff_i, aff_0);
+		maff = isl_multi_aff_restore_at(maff, i, aff_i);
 	}
 
 	return maff;
@@ -6120,15 +6110,17 @@ __isl_give isl_multi_aff *isl_multi_aff_lift(__isl_take isl_multi_aff *maff,
 {
 	int i;
 	isl_space *space;
-	isl_size n_div;
+	isl_aff *aff;
+	isl_size n, n_div;
 
 	if (ls)
 		*ls = NULL;
 
-	if (!maff)
-		return NULL;
+	n = isl_multi_aff_size(maff);
+	if (n < 0)
+		return isl_multi_aff_free(maff);
 
-	if (maff->n == 0) {
+	if (n == 0) {
 		if (ls) {
 			isl_space *space = isl_multi_aff_get_domain_space(maff);
 			*ls = isl_local_space_from_space(space);
@@ -6138,40 +6130,32 @@ __isl_give isl_multi_aff *isl_multi_aff_lift(__isl_take isl_multi_aff *maff,
 		return maff;
 	}
 
-	maff = isl_multi_aff_cow(maff);
 	maff = isl_multi_aff_align_divs(maff);
-	if (!maff)
-		return NULL;
 
-	n_div = isl_aff_dim(maff->u.p[0], isl_dim_div);
+	aff = isl_multi_aff_peek_at(maff, 0);
+	n_div = isl_aff_dim(aff, isl_dim_div);
 	if (n_div < 0)
 		return isl_multi_aff_free(maff);
 	space = isl_multi_aff_get_space(maff);
 	space = isl_space_lift(isl_space_domain(space), n_div);
 	space = isl_space_extend_domain_with_range(space,
 						isl_multi_aff_get_space(maff));
-	if (!space)
-		return isl_multi_aff_free(maff);
-	isl_space_free(maff->space);
-	maff->space = space;
+	maff = isl_multi_aff_restore_space(maff, space);
 
 	if (ls) {
-		*ls = isl_aff_get_domain_local_space(maff->u.p[0]);
+		aff = isl_multi_aff_peek_at(maff, 0);
+		*ls = isl_aff_get_domain_local_space(aff);
 		if (!*ls)
 			return isl_multi_aff_free(maff);
 	}
 
-	for (i = 0; i < maff->n; ++i) {
-		maff->u.p[i] = isl_aff_lift(maff->u.p[i]);
-		if (!maff->u.p[i])
-			goto error;
+	for (i = 0; i < n; ++i) {
+		aff = isl_multi_aff_take_at(maff, i);
+		aff = isl_aff_lift(aff);
+		maff = isl_multi_aff_restore_at(maff, i, aff);
 	}
 
 	return maff;
-error:
-	if (ls)
-		isl_local_space_free(*ls);
-	return isl_multi_aff_free(maff);
 }
 
 #undef TYPE
@@ -6586,6 +6570,8 @@ error:
 #include <isl_multi_explicit_domain.c>
 #include <isl_multi_pw_aff_explicit_domain.c>
 #include <isl_multi_templ.c>
+#include <isl_multi_un_op_templ.c>
+#include <isl_multi_bin_val_templ.c>
 #include <isl_multi_add_constant_templ.c>
 #include <isl_multi_apply_set.c>
 #include <isl_multi_arith_templ.c>
@@ -6727,38 +6713,33 @@ __isl_give isl_multi_pw_aff *isl_map_max_multi_pw_aff(__isl_take isl_map *map)
 	return map_opt_mpa(map, &isl_map_dim_max);
 }
 
-/* Scale the elements of "pma" by the corresponding elements of "mv".
+#undef TYPE
+#define TYPE	isl_pw_multi_aff
+#include "isl_type_check_match_range_multi_val.c"
+
+/* Apply "fn" to the base expressions of "pma" and "mv".
  */
-__isl_give isl_pw_multi_aff *isl_pw_multi_aff_scale_multi_val(
-	__isl_take isl_pw_multi_aff *pma, __isl_take isl_multi_val *mv)
+static __isl_give isl_pw_multi_aff *isl_pw_multi_aff_op_multi_val(
+	__isl_take isl_pw_multi_aff *pma, __isl_take isl_multi_val *mv,
+	__isl_give isl_multi_aff *(*fn)(__isl_take isl_multi_aff *ma,
+		__isl_take isl_multi_val *mv))
 {
 	int i;
-	isl_bool equal_params;
+	isl_size n;
 
-	pma = isl_pw_multi_aff_cow(pma);
-	if (!pma || !mv)
+	if (isl_pw_multi_aff_check_match_range_multi_val(pma, mv) < 0)
 		goto error;
-	if (!isl_space_tuple_is_equal(pma->dim, isl_dim_out,
-					mv->space, isl_dim_set))
-		isl_die(isl_pw_multi_aff_get_ctx(pma), isl_error_invalid,
-			"spaces don't match", goto error);
-	equal_params = isl_space_has_equal_params(pma->dim, mv->space);
-	if (equal_params < 0)
-		goto error;
-	if (!equal_params) {
-		pma = isl_pw_multi_aff_align_params(pma,
-					    isl_multi_val_get_space(mv));
-		mv = isl_multi_val_align_params(mv,
-					    isl_pw_multi_aff_get_space(pma));
-		if (!pma || !mv)
-			goto error;
-	}
 
-	for (i = 0; i < pma->n; ++i) {
-		pma->p[i].maff = isl_multi_aff_scale_multi_val(pma->p[i].maff,
-							isl_multi_val_copy(mv));
-		if (!pma->p[i].maff)
-			goto error;
+	n = isl_pw_multi_aff_n_piece(pma);
+	if (n < 0)
+		goto error;
+
+	for (i = 0; i < n; ++i) {
+		isl_multi_aff *ma;
+
+		ma = isl_pw_multi_aff_take_base_at(pma, i);
+		ma = fn(ma, isl_multi_val_copy(mv));
+		pma = isl_pw_multi_aff_restore_base_at(pma, i, ma);
 	}
 
 	isl_multi_val_free(mv);
@@ -6769,6 +6750,24 @@ error:
 	return NULL;
 }
 
+/* Scale the elements of "pma" by the corresponding elements of "mv".
+ */
+__isl_give isl_pw_multi_aff *isl_pw_multi_aff_scale_multi_val(
+	__isl_take isl_pw_multi_aff *pma, __isl_take isl_multi_val *mv)
+{
+	return isl_pw_multi_aff_op_multi_val(pma, mv,
+					&isl_multi_aff_scale_multi_val);
+}
+
+/* Scale the elements of "pma" down by the corresponding elements of "mv".
+ */
+__isl_give isl_pw_multi_aff *isl_pw_multi_aff_scale_down_multi_val(
+	__isl_take isl_pw_multi_aff *pma, __isl_take isl_multi_val *mv)
+{
+	return isl_pw_multi_aff_op_multi_val(pma, mv,
+					&isl_multi_aff_scale_down_multi_val);
+}
+
 /* This function is called for each entry of an isl_union_pw_multi_aff.
  * If the space of the entry matches that of data->mv,
  * then apply isl_pw_multi_aff_scale_multi_val and return the result.
@@ -6777,12 +6776,13 @@ error:
 static __isl_give isl_pw_multi_aff *union_pw_multi_aff_scale_multi_val_entry(
 	__isl_take isl_pw_multi_aff *pma, void *user)
 {
+	isl_bool equal;
 	isl_multi_val *mv = user;
 
-	if (!pma)
-		return NULL;
-	if (!isl_space_tuple_is_equal(pma->dim, isl_dim_out,
-				    mv->space, isl_dim_set)) {
+	equal = isl_pw_multi_aff_match_range_multi_val(pma, mv);
+	if (equal < 0)
+		return isl_pw_multi_aff_free(pma);
+	if (!equal) {
 		isl_space *space = isl_pw_multi_aff_get_space(pma);
 		isl_pw_multi_aff_free(pma);
 		return isl_pw_multi_aff_empty(space);
@@ -7132,148 +7132,15 @@ isl_bool isl_pw_multi_aff_is_equal(__isl_keep isl_pw_multi_aff *pma1,
 	return equal;
 }
 
-/* Compute the pullback of "mpa" by the function represented by "ma".
- * In other words, plug in "ma" in "mpa".
- *
- * The parameters of "mpa" and "ma" are assumed to have been aligned.
- *
- * If "mpa" has an explicit domain, then it is this domain
- * that needs to undergo a pullback, i.e., a preimage.
- */
-static __isl_give isl_multi_pw_aff *isl_multi_pw_aff_pullback_multi_aff_aligned(
-	__isl_take isl_multi_pw_aff *mpa, __isl_take isl_multi_aff *ma)
-{
-	int i;
-	isl_space *space = NULL;
+#undef BASE
+#define BASE	multi_aff
 
-	mpa = isl_multi_pw_aff_cow(mpa);
-	if (!mpa || !ma)
-		goto error;
+#include "isl_multi_pw_aff_pullback_templ.c"
 
-	space = isl_space_join(isl_multi_aff_get_space(ma),
-				isl_multi_pw_aff_get_space(mpa));
-	if (!space)
-		goto error;
+#undef BASE
+#define BASE	pw_multi_aff
 
-	for (i = 0; i < mpa->n; ++i) {
-		mpa->u.p[i] = isl_pw_aff_pullback_multi_aff(mpa->u.p[i],
-						    isl_multi_aff_copy(ma));
-		if (!mpa->u.p[i])
-			goto error;
-	}
-	if (isl_multi_pw_aff_has_explicit_domain(mpa)) {
-		mpa->u.dom = isl_set_preimage_multi_aff(mpa->u.dom,
-							isl_multi_aff_copy(ma));
-		if (!mpa->u.dom)
-			goto error;
-	}
-
-	isl_multi_aff_free(ma);
-	isl_space_free(mpa->space);
-	mpa->space = space;
-	return mpa;
-error:
-	isl_space_free(space);
-	isl_multi_pw_aff_free(mpa);
-	isl_multi_aff_free(ma);
-	return NULL;
-}
-
-/* Compute the pullback of "mpa" by the function represented by "ma".
- * In other words, plug in "ma" in "mpa".
- */
-__isl_give isl_multi_pw_aff *isl_multi_pw_aff_pullback_multi_aff(
-	__isl_take isl_multi_pw_aff *mpa, __isl_take isl_multi_aff *ma)
-{
-	isl_bool equal_params;
-
-	if (!mpa || !ma)
-		goto error;
-	equal_params = isl_space_has_equal_params(mpa->space, ma->space);
-	if (equal_params < 0)
-		goto error;
-	if (equal_params)
-		return isl_multi_pw_aff_pullback_multi_aff_aligned(mpa, ma);
-	mpa = isl_multi_pw_aff_align_params(mpa, isl_multi_aff_get_space(ma));
-	ma = isl_multi_aff_align_params(ma, isl_multi_pw_aff_get_space(mpa));
-	return isl_multi_pw_aff_pullback_multi_aff_aligned(mpa, ma);
-error:
-	isl_multi_pw_aff_free(mpa);
-	isl_multi_aff_free(ma);
-	return NULL;
-}
-
-/* Compute the pullback of "mpa" by the function represented by "pma".
- * In other words, plug in "pma" in "mpa".
- *
- * The parameters of "mpa" and "mpa" are assumed to have been aligned.
- *
- * If "mpa" has an explicit domain, then it is this domain
- * that needs to undergo a pullback, i.e., a preimage.
- */
-static __isl_give isl_multi_pw_aff *
-isl_multi_pw_aff_pullback_pw_multi_aff_aligned(
-	__isl_take isl_multi_pw_aff *mpa, __isl_take isl_pw_multi_aff *pma)
-{
-	int i;
-	isl_space *space = NULL;
-
-	mpa = isl_multi_pw_aff_cow(mpa);
-	if (!mpa || !pma)
-		goto error;
-
-	space = isl_space_join(isl_pw_multi_aff_get_space(pma),
-				isl_multi_pw_aff_get_space(mpa));
-
-	for (i = 0; i < mpa->n; ++i) {
-		mpa->u.p[i] = isl_pw_aff_pullback_pw_multi_aff_aligned(
-				    mpa->u.p[i], isl_pw_multi_aff_copy(pma));
-		if (!mpa->u.p[i])
-			goto error;
-	}
-	if (isl_multi_pw_aff_has_explicit_domain(mpa)) {
-		mpa->u.dom = isl_set_preimage_pw_multi_aff(mpa->u.dom,
-						    isl_pw_multi_aff_copy(pma));
-		if (!mpa->u.dom)
-			goto error;
-	}
-
-	isl_pw_multi_aff_free(pma);
-	isl_space_free(mpa->space);
-	mpa->space = space;
-	return mpa;
-error:
-	isl_space_free(space);
-	isl_multi_pw_aff_free(mpa);
-	isl_pw_multi_aff_free(pma);
-	return NULL;
-}
-
-/* Compute the pullback of "mpa" by the function represented by "pma".
- * In other words, plug in "pma" in "mpa".
- */
-__isl_give isl_multi_pw_aff *isl_multi_pw_aff_pullback_pw_multi_aff(
-	__isl_take isl_multi_pw_aff *mpa, __isl_take isl_pw_multi_aff *pma)
-{
-	isl_bool equal_params;
-
-	if (!mpa || !pma)
-		goto error;
-	equal_params = isl_space_has_equal_params(mpa->space, pma->dim);
-	if (equal_params < 0)
-		goto error;
-	if (equal_params)
-		return isl_multi_pw_aff_pullback_pw_multi_aff_aligned(mpa, pma);
-	mpa = isl_multi_pw_aff_align_params(mpa,
-					    isl_pw_multi_aff_get_space(pma));
-	pma = isl_pw_multi_aff_align_params(pma,
-					    isl_multi_pw_aff_get_space(mpa));
-	return isl_multi_pw_aff_pullback_pw_multi_aff_aligned(mpa, pma);
-error:
-	isl_multi_pw_aff_free(mpa);
-	isl_pw_multi_aff_free(pma);
-	return NULL;
-}
+#include "isl_multi_pw_aff_pullback_templ.c"
 
 /* Apply "aff" to "mpa".  The range of "mpa" needs to be compatible
  * with the domain of "aff".  The domain of the result is the same
@@ -7447,18 +7314,6 @@ error:
 
 /* Compute the pullback of "pa" by the function represented by "mpa".
  * In other words, plug in "mpa" in "pa".
- * "pa" and "mpa" are assumed to have been aligned.
- *
- * The pullback is computed by applying "pa" to "mpa".
- */
-static __isl_give isl_pw_aff *isl_pw_aff_pullback_multi_pw_aff_aligned(
-	__isl_take isl_pw_aff *pa, __isl_take isl_multi_pw_aff *mpa)
-{
-	return isl_multi_pw_aff_apply_pw_aff_aligned(mpa, pa);
-}
-
-/* Compute the pullback of "pa" by the function represented by "mpa".
- * In other words, plug in "mpa" in "pa".
  *
  * The pullback is computed by applying "pa" to "mpa".
  */
@@ -7468,51 +7323,10 @@ __isl_give isl_pw_aff *isl_pw_aff_pullback_multi_pw_aff(
 	return isl_multi_pw_aff_apply_pw_aff(mpa, pa);
 }
 
-/* Compute the pullback of "mpa1" by the function represented by "mpa2".
- * In other words, plug in "mpa2" in "mpa1".
- *
- * We pullback each member of "mpa1" in turn.
- *
- * If "mpa1" has an explicit domain, then it is this domain
- * that needs to undergo a pullback instead, i.e., a preimage.
- */
-__isl_give isl_multi_pw_aff *isl_multi_pw_aff_pullback_multi_pw_aff(
-	__isl_take isl_multi_pw_aff *mpa1, __isl_take isl_multi_pw_aff *mpa2)
-{
-	int i;
-	isl_space *space = NULL;
+#undef BASE
+#define BASE	multi_pw_aff
 
-	isl_multi_pw_aff_align_params_bin(&mpa1, &mpa2);
-	mpa1 = isl_multi_pw_aff_cow(mpa1);
-	if (!mpa1 || !mpa2)
-		goto error;
-
-	space = isl_space_join(isl_multi_pw_aff_get_space(mpa2),
-				isl_multi_pw_aff_get_space(mpa1));
-
-	for (i = 0; i < mpa1->n; ++i) {
-		mpa1->u.p[i] = isl_pw_aff_pullback_multi_pw_aff_aligned(
-				mpa1->u.p[i], isl_multi_pw_aff_copy(mpa2));
-		if (!mpa1->u.p[i])
-			goto error;
-	}
-
-	if (isl_multi_pw_aff_has_explicit_domain(mpa1)) {
-		mpa1->u.dom = isl_set_preimage_multi_pw_aff(mpa1->u.dom,
-						isl_multi_pw_aff_copy(mpa2));
-		if (!mpa1->u.dom)
-			goto error;
-	}
-	mpa1 = isl_multi_pw_aff_reset_space(mpa1, space);
-
-	isl_multi_pw_aff_free(mpa2);
-	return mpa1;
-error:
-	isl_space_free(space);
-	isl_multi_pw_aff_free(mpa1);
-	isl_multi_pw_aff_free(mpa2);
-	return NULL;
-}
+#include "isl_multi_pw_aff_pullback_templ.c"
 
 /* Align the parameters of "mpa1" and "mpa2", check that the ranges
  * of "mpa1" and "mpa2" live in the same space, construct map space
@@ -7792,6 +7606,15 @@ __isl_give isl_pw_aff *isl_pw_aff_val_on_domain(__isl_take isl_set *domain,
 	return isl_pw_aff_alloc(domain, aff);
 }
 
+/* This function performs the same operation as isl_pw_aff_val_on_domain,
+ * but is considered as a function on an isl_set when exported.
+ */
+__isl_give isl_pw_aff *isl_set_pw_aff_on_domain_val(__isl_take isl_set *domain,
+	__isl_take isl_val *v)
+{
+	return isl_pw_aff_val_on_domain(domain, v);
+}
+
 /* Return a piecewise affine expression that is equal to the parameter
  * with identifier "id" on "domain".
  */
@@ -7807,6 +7630,16 @@ __isl_give isl_pw_aff *isl_pw_aff_param_on_domain_id(
 	aff = isl_aff_param_on_domain_space_id(space, id);
 
 	return isl_pw_aff_alloc(domain, aff);
+}
+
+/* This function performs the same operation as
+ * isl_pw_aff_param_on_domain_id,
+ * but is considered as a function on an isl_set when exported.
+ */
+__isl_give isl_pw_aff *isl_set_param_pw_aff_on_domain_id(
+	__isl_take isl_set *domain, __isl_take isl_id *id)
+{
+	return isl_pw_aff_param_on_domain_id(domain, id);
 }
 
 /* Return a multi affine expression that is equal to "mv" on domain
@@ -8686,6 +8519,8 @@ error:
 #include <isl_multi_explicit_domain.c>
 #include <isl_multi_union_pw_aff_explicit_domain.c>
 #include <isl_multi_templ.c>
+#include <isl_multi_un_op_templ.c>
+#include <isl_multi_bin_val_templ.c>
 #include <isl_multi_apply_set.c>
 #include <isl_multi_apply_union_set.c>
 #include <isl_multi_arith_templ.c>
