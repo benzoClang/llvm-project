@@ -8,7 +8,6 @@
 #===----------------------------------------------------------------------===##
 
 from argparse import ArgumentParser
-import distutils.spawn
 import tempfile
 import os
 import shutil
@@ -110,14 +109,14 @@ def main():
 
     ar_exe = args.ar_exe
     if not ar_exe:
-        ar_exe = distutils.spawn.find_executable('ar')
+        ar_exe = shutil.which('llvm-ar')
     if not ar_exe:
         print_and_exit("failed to find 'ar' executable")
 
     if args.use_libtool:
         libtool_exe = args.libtool_exe
         if not libtool_exe:
-            libtool_exe = distutils.spawn.find_executable('libtool')
+            libtool_exe = shutil.which('libtool')
         if not libtool_exe:
             print_and_exit("failed to find 'libtool' executable")
 
