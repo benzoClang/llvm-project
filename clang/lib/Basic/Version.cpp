@@ -34,26 +34,46 @@ std::string getClangRepositoryPath() {
 }
 
 std::string getLLVMRepositoryPath() {
+#ifdef CLANG_REPOSITORY_STRING
+  return CLANG_REPOSITORY_STRING;
+#else
 #ifdef LLVM_REPOSITORY
   return LLVM_REPOSITORY;
+#else
+  return "";
+#endif
+#endif
+}
+
+std::string getClangVersion() {
+#ifdef CLANG_VERSION_STRING
+  return CLANG_VERSION_STRING;
 #else
   return "";
 #endif
 }
 
 std::string getClangRevision() {
+#ifdef CLANG_REVISION_STRING
+  return CLANG_REVISION_STRING;
+#else
 #ifdef CLANG_REVISION
   return CLANG_REVISION;
 #else
   return "";
 #endif
+#endif
 }
 
 std::string getLLVMRevision() {
+#ifdef CLANG_REVISION_STRING
+  return CLANG_REVISION_STRING;
+#else
 #ifdef LLVM_REVISION
   return LLVM_REVISION;
 #else
   return "";
+#endif
 #endif
 }
 
@@ -95,12 +115,9 @@ std::string getClangToolFullVersion(StringRef ToolName) {
 #ifdef CLANG_VENDOR
   OS << CLANG_VENDOR;
 #endif
-  OS << ToolName << " version " CLANG_VERSION_STRING;
-
-  std::string repo = getClangFullRepositoryVersion();
-  if (!repo.empty()) {
-    OS << " " << repo;
-  }
+  std::string ClangVersion = getClangVersion();
+  std::string ToolchainRevision = getLLVMRevision();
+  OS << ToolName << " version " << ClangVersion << "-" << ToolchainRevision;
 
   return buf;
 }
@@ -113,12 +130,9 @@ std::string getClangFullCPPVersion() {
 #ifdef CLANG_VENDOR
   OS << CLANG_VENDOR;
 #endif
-  OS << "Clang " CLANG_VERSION_STRING;
-
-  std::string repo = getClangFullRepositoryVersion();
-  if (!repo.empty()) {
-    OS << " " << repo;
-  }
+  std::string ClangVersion = getClangVersion();
+  std::string ToolchainRevision = getLLVMRevision();
+  OS << "Clang " << ClangVersion << "-" << ToolchainRevision;
 
   return buf;
 }
