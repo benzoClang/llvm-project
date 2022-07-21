@@ -268,10 +268,20 @@ set(CLANG_SYSTEMZ_DEFAULT_ARCH "z10" CACHE STRING "SystemZ Default Arch")
 set(CLANG_VENDOR ${PACKAGE_VENDOR} CACHE STRING
   "Vendor-specific text for showing with version information.")
 
+set(CLANG_REVISION_STRING ${PACKAGE_REVISION} CACHE STRING
+  "Vendor-specific text for showing the LLVM source svn revision.")
+
+if(CLANG_REVISION_STRING)
+  add_definitions(-DCLANG_REVISION_STRING="${CLANG_REVISION_STRING}")
+endif()
+
 set(CLANG_REPOSITORY_STRING "" CACHE STRING
   "Vendor-specific text for showing the repository the source is taken from.")
 
-if(CLANG_REPOSITORY_STRING)
+if(PACKAGE_REPOSITORY)
+  add_definitions(-DCLANG_REPOSITORY_STRING="${PACKAGE_REPOSITORY}")
+endif()
+if(NOT PACKAGE_REPOSITORY AND CLANG_REPOSITORY_STRING)
   add_definitions(-DCLANG_REPOSITORY_STRING="${CLANG_REPOSITORY_STRING}")
 endif()
 

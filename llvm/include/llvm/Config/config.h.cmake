@@ -311,6 +311,12 @@
 /* Define to the full name of this package. */
 #cmakedefine PACKAGE_NAME "${PACKAGE_NAME}"
 
+/* Define to the url of the repository of this package. */
+#cmakedefine PACKAGE_REPOSITORY "${PACKAGE_REPOSITORY}"
+
+/* Define to the revision of this package. */
+#cmakedefine PACKAGE_REVISION "${PACKAGE_REVISION}"
+
 /* Define to the full name and version of this package. */
 #cmakedefine PACKAGE_STRING "${PACKAGE_STRING}"
 

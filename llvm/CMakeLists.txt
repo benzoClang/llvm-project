@@ -23,7 +23,7 @@ endif()
 
 if (NOT PACKAGE_VERSION)
   set(PACKAGE_VERSION
-    "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
+    "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}-${PACKAGE_REVISION}")
 endif()
 
 if(NOT DEFINED LLVM_SHLIB_SYMBOL_VERSION)
@@ -323,6 +323,13 @@ set(PACKAGE_BUGREPORT "https://github.com/llvm/llvm-project/issues/")
 
 set(BUG_REPORT_URL "${PACKAGE_BUGREPORT}" CACHE STRING
   "Default URL where bug reports are to be submitted.")
+
+# Vendor stuff
+set(PACKAGE_REPOSITORY "" CACHE STRING
+  "Vendor-specific text for showing the repository the source is taken from.")
+
+set(PACKAGE_REVISION "" CACHE STRING
+  "Vendor-specific text for showing the LLVM source svn revision.")
 
 # Configure CPack.
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "LLVM")
