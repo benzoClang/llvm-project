@@ -72,23 +72,23 @@ struct isl_ast_add_term_data {
  * Similarly, if floor(cst/v) is zero, then there is no point in
  * checking again.
  */
-static int is_non_neg_after_stealing(__isl_keep isl_aff *aff,
+static isl_bool is_non_neg_after_stealing(__isl_keep isl_aff *aff,
 	__isl_keep isl_val *d, struct isl_ast_add_term_data *data)
 {
 	isl_aff *shifted;
 	isl_val *shift;
-	int is_zero;
-	int non_neg;
+	isl_bool is_zero;
+	isl_bool non_neg;
 
 	if (isl_val_sgn(data->cst) != isl_val_sgn(data->v))
-		return 0;
+		return isl_bool_false;
 
 	shift = isl_val_div(isl_val_copy(data->cst), isl_val_copy(data->v));
 	shift = isl_val_floor(shift);
 	is_zero = isl_val_is_zero(shift);
 	if (is_zero < 0 || is_zero) {
 		isl_val_free(shift);
-		return is_zero < 0 ? -1 : 0;
+		return isl_bool_not(is_zero);
 	}
 	shift = isl_val_mul(shift, isl_val_copy(d));
 	shifted = isl_aff_copy(aff);
@@ -99,7 +99,7 @@ static int is_non_neg_after_stealing(__isl_keep isl_aff *aff,
 	return non_neg;
 }
 
-/* Given the numerator "aff' of the argument of an integer division
+/* Given the numerator "aff" of the argument of an integer division
  * with denominator "d", steal part of the constant term of
  * the expression in which the integer division appears to make it
  * non-negative over data->build->domain.
@@ -115,7 +115,7 @@ static int is_non_neg_after_stealing(__isl_keep isl_aff *aff,
  * That is, compute the minimal value "m" of "aff" over
  * data->build->domain and take
  *
- *	s = ceil(m/d)
+ *	s = ceil(-m/d)
  *
  * such that
  *
@@ -197,7 +197,8 @@ static __isl_give isl_ast_expr *var_div(struct isl_ast_add_term_data *data,
 
 	type = isl_ast_expr_op_fdiv_q;
 	if (isl_options_get_ast_build_prefer_pdiv(ctx)) {
-		int non_neg = isl_ast_build_aff_is_nonneg(data->build, aff);
+		isl_bool non_neg;
+		non_neg = isl_ast_build_aff_is_nonneg(data->build, aff);
 		if (non_neg >= 0 && !non_neg) {
 			isl_aff *opp = oppose_div_arg(isl_aff_copy(aff),
 							isl_val_copy(d));
@@ -257,12 +258,12 @@ static __isl_give isl_ast_expr *var(struct isl_ast_add_term_data *data,
 
 /* Does "expr" represent the zero integer?
  */
-static int ast_expr_is_zero(__isl_keep isl_ast_expr *expr)
+static isl_bool ast_expr_is_zero(__isl_keep isl_ast_expr *expr)
 {
 	if (!expr)
-		return -1;
+		return isl_bool_error;
 	if (expr->type != isl_ast_expr_int)
-		return 0;
+		return isl_bool_false;
 	return isl_val_is_zero(expr->u.v);
 }
 
@@ -569,7 +570,7 @@ static isl_bool is_even_test(struct isl_extract_mod_data *data,
  *
  * Also, if "lin - 1" is non-negative, then "lin" is non-negative too.
  */
-static int extract_term_and_mod(struct isl_extract_mod_data *data,
+static isl_stat extract_term_and_mod(struct isl_extract_mod_data *data,
 	__isl_take isl_aff *term, __isl_take isl_aff *arg)
 {
 	isl_bool even;
@@ -605,9 +606,9 @@ static int extract_term_and_mod(struct isl_extract_mod_data *data,
 	else
 		data->add = isl_aff_add(data->add, term);
 	if (!data->add)
-		return -1;
+		return isl_stat_error;
 
-	return 0;
+	return isl_stat_ok;
 }
 
 /* Given that data->v * div_i in data->aff is of the form
@@ -628,7 +629,7 @@ static int extract_term_and_mod(struct isl_extract_mod_data *data,
  *
  * to data->neg or data->pos depending on the sign of -f.
  */
-static int extract_mod(struct isl_extract_mod_data *data)
+static isl_stat extract_mod(struct isl_extract_mod_data *data)
 {
 	return extract_term_and_mod(data, isl_aff_copy(data->div),
 			isl_aff_copy(data->div));
@@ -652,9 +653,9 @@ static int extract_mod(struct isl_extract_mod_data *data)
  *
  * This function may modify data->div.
  */
-static int extract_nonneg_mod(struct isl_extract_mod_data *data)
+static isl_stat extract_nonneg_mod(struct isl_extract_mod_data *data)
 {
-	int mod;
+	isl_bool mod;
 
 	mod = isl_ast_build_aff_is_nonneg(data->build, data->div);
 	if (mod < 0)
@@ -671,10 +672,10 @@ static int extract_nonneg_mod(struct isl_extract_mod_data *data)
 		return extract_mod(data);
 	}
 
-	return 0;
+	return isl_stat_ok;
 error:
 	data->aff = isl_aff_free(data->aff);
-	return -1;
+	return isl_stat_error;
 }
 
 /* Is the affine expression of constraint "c" "simpler" than data->nonneg
@@ -735,19 +736,21 @@ static isl_stat check_parallel_or_opposite(__isl_take isl_constraint *c,
 	enum isl_dim_type a_type[2] = { isl_dim_param, isl_dim_in };
 	int i, t;
 	isl_size n[2];
-	int parallel = 1, opposite = 1;
+	isl_bool parallel = isl_bool_true, opposite = isl_bool_true;
 
 	for (t = 0; t < 2; ++t) {
 		n[t] = isl_constraint_dim(c, c_type[t]);
 		if (n[t] < 0)
-			return isl_stat_error;
+			goto error;
 		for (i = 0; i < n[t]; ++i) {
-			int a, b;
+			isl_bool a, b;
 
 			a = isl_constraint_involves_dims(c, c_type[t], i, 1);
 			b = isl_aff_involves_dims(data->div, a_type[t], i, 1);
+			if (a < 0 || b < 0)
+				goto error;
 			if (a != b)
-				parallel = opposite = 0;
+				parallel = opposite = isl_bool_false;
 		}
 	}
 
@@ -756,7 +759,7 @@ static isl_stat check_parallel_or_opposite(__isl_take isl_constraint *c,
 
 		v = isl_val_abs(isl_constraint_get_constant_val(c));
 		if (isl_val_cmp_si(v, 1 << 15) > 0)
-			parallel = opposite = 0;
+			parallel = opposite = isl_bool_false;
 		isl_val_free(v);
 	}
 
@@ -781,6 +784,8 @@ static isl_stat check_parallel_or_opposite(__isl_take isl_constraint *c,
 			}
 			isl_val_free(v1);
 			isl_val_free(v2);
+			if (parallel < 0 || opposite < 0)
+				goto error;
 		}
 	}
 
@@ -796,6 +801,9 @@ static isl_stat check_parallel_or_opposite(__isl_take isl_constraint *c,
 		return isl_stat_error;
 
 	return isl_stat_ok;
+error:
+	isl_constraint_free(c);
+	return isl_stat_error;
 }
 
 /* Given that data->v * div_i in data->aff is of the form
@@ -854,7 +862,7 @@ static isl_stat check_parallel_or_opposite(__isl_take isl_constraint *c,
  * multiple of d to make it positive.
  *
  *
- * Note that the above is a only a very simple heuristic for finding an
+ * Note that the above is only a very simple heuristic for finding an
  * appropriate expression.  We could try a bit harder by also considering
  * sums of constraints that involve disjoint sets of variables or
  * we could consider arbitrary linear combinations of constraints,
@@ -877,7 +885,7 @@ static isl_stat check_parallel_or_opposite(__isl_take isl_constraint *c,
  * Alternatively, we could first compute the dual of the domain
  * and plug in the constraints on the coefficients.
  */
-static int try_extract_mod(struct isl_extract_mod_data *data)
+static isl_stat try_extract_mod(struct isl_extract_mod_data *data)
 {
 	isl_basic_set *hull;
 	isl_val *v1, *v2;
@@ -937,7 +945,7 @@ static int try_extract_mod(struct isl_extract_mod_data *data)
 				    isl_aff_copy(data->div), data->nonneg);
 error:
 	data->aff = isl_aff_free(data->aff);
-	return -1;
+	return isl_stat_error;
 }
 
 /* Check if "data->aff" involves any (implicit) modulo computations based
@@ -1135,7 +1143,7 @@ error:
 	return NULL;
 }
 
-/* Construct an isl_ast_expr that evaluates the affine expression "aff",
+/* Construct an isl_ast_expr that evaluates the affine expression "aff".
  * The result is simplified in terms of build->domain.
  *
  * We first extract hidden modulo computations from the affine expression
@@ -1240,13 +1248,17 @@ static __isl_give isl_ast_expr *add_signed_terms(__isl_take isl_ast_expr *expr,
  * This results in slightly shorter expressions and may reduce the risk
  * of overflows.
  */
-static int constant_is_considered_positive(__isl_keep isl_val *v,
+static isl_bool constant_is_considered_positive(__isl_keep isl_val *v,
 	__isl_keep isl_ast_expr *pos, __isl_keep isl_ast_expr *neg)
 {
-	if (ast_expr_is_zero(pos))
-		return 1;
-	if (ast_expr_is_zero(neg))
-		return 0;
+	isl_bool zero;
+
+	zero = ast_expr_is_zero(pos);
+	if (zero < 0 || zero)
+		return zero;
+	zero = ast_expr_is_zero(neg);
+	if (zero < 0 || zero)
+		return isl_bool_not(zero);
 	return isl_val_is_pos(v);
 }
 
@@ -1276,11 +1288,11 @@ static int constant_is_considered_positive(__isl_keep isl_val *v,
  *
  * where e and e' differ by a constant.
  */
-static int is_stride_constraint(__isl_keep isl_aff *aff, int pos)
+static isl_bool is_stride_constraint(__isl_keep isl_aff *aff, int pos)
 {
 	isl_aff *div;
 	isl_val *c, *d;
-	int eq;
+	isl_bool eq;
 
 	div = isl_aff_get_div(aff, pos);
 	c = isl_aff_get_coefficient_val(aff, isl_dim_div, pos);
@@ -1379,7 +1391,7 @@ static __isl_give isl_ast_expr *extract_stride_constraint(
 	return expr;
 }
 
-/* Construct an isl_ast_expr that evaluates the condition "constraint",
+/* Construct an isl_ast_expr that evaluates the condition "constraint".
  * The result is simplified in terms of build->domain.
  *
  * We first check if the constraint is an equality of the form
@@ -1412,7 +1424,7 @@ static __isl_give isl_ast_expr *extract_stride_constraint(
  * is not), then we swap the two expressions.  This ensures that we construct,
  * e.g., "i <= 5" rather than "5 >= i".
  *
- * Furthermore, is there are no terms with positive coefficients (or no terms
+ * Furthermore, if there are no terms with positive coefficients (or no terms
  * with negative coefficients), then the constant term is added to "pos"
  * (or "neg"), ignoring the sign of the constant term.
  */
@@ -1420,29 +1432,29 @@ static __isl_give isl_ast_expr *isl_ast_expr_from_constraint(
 	__isl_take isl_constraint *constraint, __isl_keep isl_ast_build *build)
 {
 	int i;
+	isl_bool cst_is_pos;
 	isl_size n;
 	isl_ctx *ctx;
 	isl_ast_expr *expr_pos;
 	isl_ast_expr *expr_neg;
 	isl_ast_expr *expr;
 	isl_aff *aff;
-	int eq;
+	isl_bool eq;
 	enum isl_ast_expr_op_type type;
 	struct isl_ast_add_term_data data;
-
-	if (!constraint)
-		return NULL;
 
 	aff = isl_constraint_get_aff(constraint);
 	eq = isl_constraint_is_equality(constraint);
 	isl_constraint_free(constraint);
+	if (eq < 0)
+		goto error;
 
 	n = isl_aff_dim(aff, isl_dim_div);
 	if (n < 0)
 		aff = isl_aff_free(aff);
 	if (eq && n > 0)
 		for (i = 0; i < n; ++i) {
-			int is_stride;
+			isl_bool is_stride;
 			is_stride = is_stride_constraint(aff, i);
 			if (is_stride < 0)
 				goto error;
@@ -1463,7 +1475,12 @@ static __isl_give isl_ast_expr *isl_ast_expr_from_constraint(
 	expr_neg = add_signed_terms(expr_neg, aff, -1, &data);
 	data.cst = isl_val_neg(data.cst);
 
-	if (constant_is_considered_positive(data.cst, expr_pos, expr_neg)) {
+	cst_is_pos =
+	    constant_is_considered_positive(data.cst, expr_pos, expr_neg);
+	if (cst_is_pos < 0)
+		expr_pos = isl_ast_expr_free(expr_pos);
+
+	if (cst_is_pos) {
 		expr_pos = isl_ast_expr_add_int(expr_pos, data.cst);
 	} else {
 		data.cst = isl_val_neg(data.cst);

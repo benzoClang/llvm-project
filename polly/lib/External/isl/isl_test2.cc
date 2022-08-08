@@ -28,6 +28,13 @@ static binary_fn<A1, R, T> const arg(const binary_fn<A1, R, T> &fn)
 	return fn;
 }
 
+/* A description of the input and the output of a unary operation.
+ */
+struct unary {
+	const char *arg;
+	const char *res;
+};
+
 /* A description of the inputs and the output of a binary operation.
  */
 struct binary {
@@ -61,6 +68,31 @@ static bool is_equal(const T &a, const T &b)
 	isl::exception::throw_error(isl_error_invalid, msg, __FILE__, __LINE__)
 
 /* Run a sequence of tests of method "fn" with stringification "name" and
+ * with input and output described by "test",
+ * throwing an exception when an unexpected result is produced.
+ */
+template <typename R, typename T>
+static void test(isl::ctx ctx, R (T::*fn)() const, const std::string &name,
+	const std::vector<unary> &tests)
+{
+	for (const auto &test : tests) {
+		T obj(ctx, test.arg);
+		R expected(ctx, test.res);
+		const auto &res = (obj.*fn)();
+		std::ostringstream ss;
+
+		if (is_equal(expected, res))
+			continue;
+
+		ss << name << "(" << test.arg << ") =\n"
+		   << res << "\n"
+		   << "expecting:\n"
+		   << expected;
+		THROW_INVALID(ss.str().c_str());
+	}
+}
+
+/* Run a sequence of tests of method "fn" with stringification "name" and
  * with inputs and output described by "test",
  * throwing an exception when an unexpected result is produced.
  */
@@ -90,6 +122,36 @@ static void test(isl::ctx ctx, R (T::*fn)(A1) const, const std::string &name,
  * as extra argument a stringification of "FN".
  */
 #define C(FN, ...) test(ctx, FN, #FN, __VA_ARGS__)
+
+/* Perform some basic isl::space tests.
+ */
+static void test_space(isl::ctx ctx)
+{
+	C(&isl::space::domain, {
+	{ "{ A[] -> B[] }", "{ A[] }" },
+	{ "{ A[C[] -> D[]] -> B[E[] -> F[]] }", "{ A[C[] -> D[]] }" },
+	});
+
+	C(&isl::space::range, {
+	{ "{ A[] -> B[] }", "{ B[] }" },
+	{ "{ A[C[] -> D[]] -> B[E[] -> F[]] }", "{ B[E[] -> F[]] }" },
+	});
+
+	C(&isl::space::params, {
+	{ "{ A[] -> B[] }", "{ : }" },
+	{ "{ A[C[] -> D[]] -> B[E[] -> F[]] }", "{ : }" },
+	});
+}
+
+/* Perform some basic conversion tests.
+ */
+static void test_conversion(isl::ctx ctx)
+{
+	C(&isl::multi_pw_aff::as_set, {
+	{ "[n] -> { [] : n >= 0 } ",
+	  "[n] -> { [] : n >= 0 } " },
+	});
+}
 
 /* Perform some basic preimage tests.
  */
@@ -157,11 +219,73 @@ static void test_preimage(isl::ctx ctx)
 	});
 }
 
+/* Perform some basic intersection tests.
+ */
+static void test_intersect(isl::ctx ctx)
+{
+	C(&isl::union_map::intersect_domain_wrapped_domain, {
+	{ "{ [A[x] -> B[y]] -> C[z]; [D[x] -> A[y]] -> E[z] }",
+	  "{ A[0] }",
+	  "{ [A[0] -> B[y]] -> C[z] }" },
+	{ "{ C[z] -> [A[x] -> B[y]]; E[z] -> [D[x] -> A[y]] }",
+	  "{ A[0] }",
+	  "{ }" },
+	});
+
+	C(&isl::union_map::intersect_range_wrapped_domain, {
+	{ "{ [A[x] -> B[y]] -> C[z]; [D[x] -> A[y]] -> E[z] }",
+	  "{ A[0] }",
+	  "{ }" },
+	{ "{ C[z] -> [A[x] -> B[y]]; E[z] -> [D[x] -> A[y]] }",
+	  "{ A[0] }",
+	  "{ C[z] -> [A[0] -> B[y]] }" },
+	});
+}
+
+/* Perform some basic gist tests.
+ */
+static void test_gist(isl::ctx ctx)
+{
+	C(&isl::pw_aff::gist_params, {
+	{ "[N] -> { D[x] -> [x] : N >= 0; D[x] -> [0] : N < 0 }",
+	  "[N] -> { : N >= 0 }",
+	  "[N] -> { D[x] -> [x] }" },
+	});
+}
+
+/* Perform some basic scaling tests.
+ */
+static void test_scale(isl::ctx ctx)
+{
+	C(arg<isl::multi_val>(&isl::pw_multi_aff::scale), {
+	{ "{ A[a] -> B[a, a + 1, a - 1] : a >= 0 }", "{ B[2, 7, 0] }",
+	  "{ A[a] -> B[2a, 7a + 7, 0] : a >= 0 }" },
+	});
+	C(arg<isl::multi_val>(&isl::pw_multi_aff::scale), {
+	{ "{ A[a] -> B[a, a - 1] : a >= 0 }", "{ B[1/2, 7] }",
+	  "{ A[a] -> B[a/2, 7a - 7] : a >= 0 }" },
+	});
+
+	C(arg<isl::multi_val>(&isl::pw_multi_aff::scale_down), {
+	{ "{ A[a] -> B[a, a + 1] : a >= 0 }", "{ B[2, 7] }",
+	  "{ A[a] -> B[a/2, (a + 1)/7] : a >= 0 }" },
+	});
+	C(arg<isl::multi_val>(&isl::pw_multi_aff::scale_down), {
+	{ "{ A[a] -> B[a, a - 1] : a >= 0 }", "{ B[2, 1/7] }",
+	  "{ A[a] -> B[a/2, 7a - 7] : a >= 0 }" },
+	});
+}
+
 /* The list of tests to perform.
  */
 static std::vector<std::pair<const char *, void (*)(isl::ctx)>> tests =
 {
+	{ "space", &test_space },
+	{ "conversion", &test_conversion },
 	{ "preimage", &test_preimage },
+	{ "intersect", &test_intersect },
+	{ "gist", &test_gist },
+	{ "scale", &test_scale },
 };
 
 /* Perform some basic checks by means of the C++ bindings.

@@ -165,6 +165,7 @@ static const char *reparse_pw_multi_aff_tests[] = {
 	"{ [x, x] -> [x % 4] }",
 	"{ [x, x + 1] -> [x % 4] : x mod 3 = 1 }",
 	"{ [x, x mod 2] -> [x % 4] }",
+	"{ [a] -> [a//2] : exists (e0: 8*floor((-a + e0)/8) <= -8 - a + 8e0) }",
 };
 
 #undef BASE
@@ -2377,6 +2378,7 @@ struct {
 	{ 0, "{ [0:1, 0:1]; [0, 2:3] }" },
 	{ 1, "{ [a] : (a = 0 or ((1 + a) mod 2 = 0 and 0 < a <= 15) or "
 		"((a) mod 2 = 0 and 0 < a <= 15)) }" },
+	{ 1, "{ rat: [0:2]; rat: [1:3] }" },
 };
 
 /* A specialized coalescing test case that would result
@@ -2419,7 +2421,7 @@ static int test_coalesce_special(struct isl_ctx *ctx)
 }
 
 /* Check that the union of the basic sets described by "str1" and "str2"
- * can be coalesced.
+ * can be coalesced and that the result is equal to the union.
  * The explicit call to isl_basic_set_union prevents the implicit
  * equality constraints in the basic maps from being detected prior
  * to the call to isl_set_coalesce, at least at the point
@@ -2429,13 +2431,28 @@ static isl_stat test_coalesce_union(isl_ctx *ctx, const char *str1,
 	const char *str2)
 {
 	isl_basic_set *bset1, *bset2;
-	isl_set *set;
+	isl_set *set, *set2;
+	isl_bool equal;
 
 	bset1 = isl_basic_set_read_from_str(ctx, str1);
 	bset2 = isl_basic_set_read_from_str(ctx, str2);
 	set = isl_basic_set_union(bset1, bset2);
 	set = isl_set_coalesce(set);
+
+	bset1 = isl_basic_set_read_from_str(ctx, str1);
+	bset2 = isl_basic_set_read_from_str(ctx, str2);
+	set2 = isl_basic_set_union(bset1, bset2);
+
+	equal = isl_set_is_equal(set, set2);
 	isl_set_free(set);
+	isl_set_free(set2);
+
+	if (equal < 0)
+		return isl_stat_error;
+	if (!equal)
+		isl_die(ctx, isl_error_unknown,
+			"coalesced set not equal to input",
+			return isl_stat_error);
 
 	return isl_stat_non_null(set);
 }
@@ -2585,6 +2602,25 @@ static isl_stat test_coalesce_special7(isl_ctx *ctx)
 	return test_coalesce_union(ctx, str1, str2);
 }
 
+/* A specialized coalescing test case that would result in a disjunct
+ * getting dropped in an earlier version of isl.  Use test_coalesce_union with
+ * an explicit call to isl_basic_set_union to prevent the implicit
+ * equality constraints in the basic maps from being detected prior
+ * to the call to isl_set_coalesce, at least at the point
+ * where this test case was introduced.
+ */
+static isl_stat test_coalesce_special8(isl_ctx *ctx)
+{
+	const char *str1;
+	const char *str2;
+
+	str1 = "{ [a, b, c] : 2c <= -a and b >= -a and b <= 5 and "
+			"6c > -7a and 11c >= -5a - b and a <= 3 }";
+	str2 = "{ [a, b, c] : 6c > -7a and b >= -a and b <= 5 and "
+			"11c >= -5a - b and a >= 4 and 2b <= a and 2c <= -a }";
+	return test_coalesce_union(ctx, str1, str2);
+}
+
 /* Test the functionality of isl_set_coalesce.
  * That is, check that the output is always equal to the input
  * and in some cases that the result consists of a single disjunct.
@@ -2616,7 +2652,8 @@ static int test_coalesce(struct isl_ctx *ctx)
 		return -1;
 	if (test_coalesce_special7(ctx) < 0)
 		return -1;
-
+	if (test_coalesce_special8(ctx) < 0)
+		return -1;
 
 	return 0;
 }
@@ -3725,6 +3762,8 @@ struct {
 	{ "{ [i] -> ([(i)/2]) }", "{ [k] : exists a : k = 2a+1 }",
 	  "{ [i] -> -1/2 + 1/2 * i }" },
 	{ "{ [i] -> i^2 : i != 0 }", "{ [i] : i != 0 }", "{ [i] -> i^2 }" },
+	{ "{ [i] -> i^2 : i > 0; [i] -> i^2 : i < 0 }", "{ [i] : i != 0 }",
+	  "{ [i] -> i^2 }" },
 };
 
 /* Perform some basic isl_pw_qpolynomial_gist tests.
@@ -10270,8 +10309,7 @@ static int test_schedule_tree_prefix(isl_ctx *ctx)
 	filters = isl_union_set_list_add(filters, uset);
 	node = isl_schedule_node_insert_sequence(node, filters);
 
-	node = isl_schedule_node_child(node, 0);
-	node = isl_schedule_node_child(node, 0);
+	node = isl_schedule_node_grandchild(node, 0, 0);
 	mupa = isl_schedule_node_get_prefix_schedule_multi_union_pw_aff(node);
 	str = "([] : { S1[i,j] : i > j })";
 	mupa2 = isl_multi_union_pw_aff_read_from_str(ctx, str);
@@ -10386,8 +10424,7 @@ static int test_schedule_tree_group_2(isl_ctx *ctx)
 	uset = isl_union_set_read_from_str(ctx, str);
 	filters = isl_union_set_list_add(filters, uset);
 	node = isl_schedule_node_insert_sequence(node, filters);
-	node = isl_schedule_node_child(node, 1);
-	node = isl_schedule_node_child(node, 0);
+	node = isl_schedule_node_grandchild(node, 1, 0);
 	str = "{ S2[i,j] }";
 	uset = isl_union_set_read_from_str(ctx, str);
 	filters = isl_union_set_list_from_union_set(uset);
@@ -10402,12 +10439,10 @@ static int test_schedule_tree_group_2(isl_ctx *ctx)
 	umap1 = isl_union_map_intersect_domain(umap1, uset);
 	isl_schedule_free(schedule);
 
-	node = isl_schedule_node_parent(node);
-	node = isl_schedule_node_parent(node);
+	node = isl_schedule_node_grandparent(node);
 	id = isl_id_alloc(ctx, "group1", NULL);
 	node = isl_schedule_node_group(node, id);
-	node = isl_schedule_node_child(node, 1);
-	node = isl_schedule_node_child(node, 0);
+	node = isl_schedule_node_grandchild(node, 1, 0);
 	id = isl_id_alloc(ctx, "group2", NULL);
 	node = isl_schedule_node_group(node, id);
 
