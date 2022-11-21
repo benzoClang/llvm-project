@@ -1125,8 +1125,6 @@ static __isl_give isl_ast_graft *set_for_node_expressions(
 	if (!graft)
 		return NULL;
 
-	build = isl_ast_build_copy(build);
-
 	node = graft->node;
 	node->u.f.init = reduce_list(isl_ast_expr_op_max, lower, build);
 	node->u.f.inc = for_inc(build);
@@ -1138,8 +1136,6 @@ static __isl_give isl_ast_graft *set_for_node_expressions(
 		graft = set_for_cond_from_list(graft, upper_list, build);
 	else
 		graft = set_for_cond_from_set(graft, upper_set, build);
-
-	isl_ast_build_free(build);
 
 	return graft;
 }
@@ -1247,7 +1243,7 @@ struct isl_ast_count_constraints_data {
 };
 
 /* Increment data->n_indep, data->lower or data->upper depending
- * on whether "c" is independenct of dimensions data->pos,
+ * on whether "c" is independent of dimensions data->pos,
  * a lower bound or an upper bound.
  */
 static isl_stat count_constraints(__isl_take isl_constraint *c, void *user)

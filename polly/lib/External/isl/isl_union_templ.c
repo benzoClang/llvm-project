@@ -201,9 +201,7 @@ static __isl_give UNION *FN(UNION,add_part_generic)(__isl_take UNION *u,
 			goto error;
 		entry->data = FN(PART,union_add_)(entry->data,
 						FN(PART,copy)(part));
-		if (!entry->data)
-			goto error;
-		empty = FN(PART,IS_ZERO)(part);
+		empty = FN(PART,IS_ZERO)(entry->data);
 		if (empty < 0)
 			goto error;
 		if (empty)
@@ -455,13 +453,12 @@ error:
 __isl_give UNION *FN(UNION,align_params)(__isl_take UNION *u,
 	__isl_take isl_space *model)
 {
+	isl_space *space;
 	isl_bool equal_params;
 	isl_reordering *r;
 
-	if (!u || !model)
-		goto error;
-
-	equal_params = isl_space_has_equal_params(u->space, model);
+	space = FN(UNION,peek_space)(u);
+	equal_params = isl_space_has_equal_params(space, model);
 	if (equal_params < 0)
 		goto error;
 	if (equal_params) {
@@ -469,7 +466,7 @@ __isl_give UNION *FN(UNION,align_params)(__isl_take UNION *u,
 		return u;
 	}
 
-	r = isl_parameter_alignment_reordering(u->space, model);
+	r = isl_parameter_alignment_reordering(space, model);
 	isl_space_free(model);
 
 	return FN(UNION,realign_domain)(u, r);
@@ -652,10 +649,19 @@ __isl_give UNION *FN(UNION,add)(__isl_take UNION *u1, __isl_take UNION *u2)
 
 #ifndef NO_SUB
 /* Subtract "u2" from "u1" and return the result.
+ *
+ * If the base expressions have a default zero value, then
+ * reuse isl_union_*_add to ensure the result
+ * is computed on the union of the domains of "u1" and "u2".
+ * Otherwise, compute the result directly on their shared domain.
  */
 __isl_give UNION *FN(UNION,sub)(__isl_take UNION *u1, __isl_take UNION *u2)
 {
+#if DEFAULT_IS_ZERO
+	return FN(UNION,add)(u1, FN(UNION,neg)(u2));
+#else
 	return FN(UNION,match_bin_op)(u1, u2, &FN(PART,sub));
+#endif
 }
 #endif
 

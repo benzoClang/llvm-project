@@ -9,7 +9,7 @@ ISL_SOURCE_DIR="${SCRIPTPATH}/isl"
 GITDIR=`mktemp -d --tmpdir isl-XXX`
 
 # Checkout isl source code
-git clone --recursive http://repo.or.cz/isl.git $GITDIR
+git clone --recursive https://repo.or.cz/isl.git $GITDIR
 if [ -n "$1" ]; then
   (cd $GITDIR && git checkout --detach $1)
   (cd $GITDIR && git submodule update --recursive)

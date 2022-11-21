@@ -2,7 +2,7 @@
  * Copyright 2008-2009 Katholieke Universiteit Leuven
  * Copyright 2010      INRIA Saclay
  * Copyright 2012-2013 Ecole Normale Superieure
- * Copyright 2019      Cerebras Systems
+ * Copyright 2019,2022 Cerebras Systems
  *
  * Use of this software is governed by the MIT license
  *
@@ -1094,6 +1094,20 @@ static __isl_give isl_space *space_set_dim_name(__isl_take isl_space *space,
 	return space;
 }
 
+/* Set the name of the last (output) dimension of "space" to "name",
+ * ignoring any primes in "name".
+ */
+static __isl_give isl_space *space_set_last_dim_name(
+	__isl_take isl_space *space, char *name)
+{
+	isl_size pos;
+
+	pos = isl_space_dim(space, isl_dim_out);
+	if (pos < 0)
+		return isl_space_free(space);
+	return space_set_dim_name(space, pos - 1, name);
+}
+
 /* Construct an isl_pw_aff defined on a "space" (with v->n variables)
  * that is equal to the last of those variables.
  */
@@ -1543,11 +1557,7 @@ static __isl_give isl_space *read_tuple_pw_aff_el(__isl_keep isl_stream *s,
 		isl_token_free(tok);
 		pa = identity_tuple_el(v);
 	} else if (new_name) {
-		isl_size pos = isl_space_dim(space, isl_dim_out);
-		if (pos < 0)
-			goto error;
-		pos -= 1;
-		space = space_set_dim_name(space, pos, v->v->name);
+		space = space_set_last_dim_name(space, v->v->name);
 		isl_token_free(tok);
 		if (isl_stream_eat_if_available(s, '='))
 			pa = read_tuple_var_def(s, v, rational);
@@ -1717,6 +1727,145 @@ static __isl_give isl_map *read_map_tuple(__isl_keep isl_stream *s,
 		return isl_map_free(map);
 
 	return map_from_tuple(tuple, map, type, v, rational);
+}
+
+/* Read the parameter domain of an expression from "s" (if any) and
+ * check that it does not involve any constraints.
+ * "v" contains a description of the identifiers parsed so far
+ * (of which there should not be any at this point) and is extended
+ * by this function.
+ */
+static __isl_give isl_set *read_universe_params(__isl_keep isl_stream *s,
+	struct vars *v)
+{
+	isl_set *dom;
+
+	dom = isl_set_universe(isl_space_params_alloc(s->ctx, 0));
+	if (next_is_tuple(s)) {
+		dom = read_map_tuple(s, dom, isl_dim_param, v, 1, 0);
+		if (isl_stream_eat(s, ISL_TOKEN_TO))
+			return isl_set_free(dom);
+	}
+	if (!isl_set_plain_is_universe(dom))
+		isl_die(s->ctx, isl_error_invalid,
+			"expecting universe parameter domain",
+			return isl_set_free(dom));
+
+	return dom;
+}
+
+/* This function is called for each element in a tuple inside read_space_tuples.
+ * Add a new variable to "v" and adjust "space" accordingly
+ * if the variable has a name.
+ */
+static __isl_give isl_space *read_tuple_id(__isl_keep isl_stream *s,
+	struct vars *v, __isl_take isl_space *space, int rational, void *user)
+{
+	struct isl_token *tok;
+
+	tok = next_token(s);
+	if (!tok) {
+		isl_stream_error(s, NULL, "unexpected EOF");
+		return isl_space_free(space);
+	}
+
+	if (tok->type == ISL_TOKEN_IDENT) {
+		int n = v->n;
+		int p = vars_pos(v, tok->u.s, -1);
+		if (p < 0)
+			goto error;
+		if (p < n) {
+			isl_stream_error(s, tok, "expecting fresh identifier");
+			goto error;
+		}
+		space = space_set_last_dim_name(space, v->v->name);
+	} else if (tok->type == '*') {
+		if (vars_add_anon(v) < 0)
+			goto error;
+	} else {
+		isl_stream_error(s, tok, "expecting identifier or '*'");
+		goto error;
+	}
+
+	isl_token_free(tok);
+	return space;
+error:
+	isl_token_free(tok);
+	return isl_space_free(space);
+}
+
+/* Given a parameter space "params", extend it with one or two tuples
+ * read from "s".
+ * "v" contains a description of the identifiers parsed so far and is extended
+ * by this function.
+ */
+static __isl_give isl_space *read_space_tuples(__isl_keep isl_stream *s,
+	struct vars *v, __isl_take isl_space *params)
+{
+	isl_space *space, *ran;
+
+	space = read_tuple_space(s, v, isl_space_copy(params), 1, 1,
+				&read_tuple_id, NULL);
+	if (isl_stream_eat_if_available(s, ISL_TOKEN_TO)) {
+		ran = read_tuple_space(s, v, isl_space_copy(params), 1, 1,
+					&read_tuple_id, NULL);
+		space = isl_space_unwrap(isl_space_product(space, ran));
+	}
+	isl_space_free(params);
+
+	return space;
+}
+
+/* Read an isl_space object from "s".
+ *
+ * First read the parameters (if any).
+ *
+ * Then check if the description is of the special form "{ : }",
+ * in which case it represents a parameter space.
+ * Otherwise, it has one or two tuples.
+ */
+__isl_give isl_space *isl_stream_read_space(__isl_keep isl_stream *s)
+{
+	struct vars *v;
+	isl_set *dom;
+	isl_space *space;
+
+	v = vars_new(s->ctx);
+	if (!v)
+		return NULL;
+	dom = read_universe_params(s, v);
+	space = isl_set_get_space(dom);
+	isl_set_free(dom);
+
+	if (isl_stream_eat(s, '{'))
+		goto error;
+
+	if (!isl_stream_eat_if_available(s, ':'))
+		space = read_space_tuples(s, v, space);
+
+	if (isl_stream_eat(s, '}'))
+		goto error;
+
+	vars_free(v);
+	return space;
+error:
+	vars_free(v);
+	isl_space_free(space);
+	return NULL;
+}
+
+/* Read an isl_space object from "str".
+ */
+__isl_give isl_space *isl_space_read_from_str(isl_ctx *ctx,
+	const char *str)
+{
+	struct isl_space *space;
+	isl_stream *s = isl_stream_new_str(ctx, str);
+	if (!s)
+		return NULL;
+	space = isl_stream_read_space(s);
+	isl_stream_free(s);
+	return space;
 }
 
 /* Given two equal-length lists of piecewise affine expression with the space
@@ -3619,7 +3768,7 @@ __isl_give isl_pw_aff *isl_pw_aff_read_from_str(isl_ctx *ctx, const char *str)
  * Note that the function read_tuple accepts tuples where some output or
  * set dimensions are defined in terms of other output or set dimensions
  * since this function is also used to read maps.  As a special case,
- * read_tuple also accept dimensions that are defined in terms of themselves
+ * read_tuple also accepts dimensions that are defined in terms of themselves
  * (i.e., that are not defined).
  * These cases are not allowed when extracting an isl_multi_pw_aff so check
  * that the definitions of the output/set dimensions do not involve any
@@ -3886,15 +4035,9 @@ __isl_give isl_multi_aff *isl_stream_read_multi_aff(__isl_keep isl_stream *s)
 	if (!v)
 		return NULL;
 
-	dom = isl_set_universe(isl_space_params_alloc(s->ctx, 0));
-	if (next_is_tuple(s)) {
-		dom = read_map_tuple(s, dom, isl_dim_param, v, 1, 0);
-		if (isl_stream_eat(s, ISL_TOKEN_TO))
-			goto error;
-	}
-	if (!isl_set_plain_is_universe(dom))
-		isl_die(s->ctx, isl_error_invalid,
-			"expecting universe parameter domain", goto error);
+	dom = read_universe_params(s, v);
+	if (!dom)
+		goto error;
 	if (isl_stream_eat(s, '{'))
 		goto error;
 
